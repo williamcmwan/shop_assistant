@@ -9,8 +9,8 @@ export interface ImageResizeOptions {
 
 export class ImageUtils {
   private static defaultOptions: Required<ImageResizeOptions> = {
-    maxWidth: 800,    // Optimal for OCR readability
-    maxHeight: 600,   // Maintain aspect ratio
+    maxWidth: 384,    // Maximum 384px for cost optimization
+    maxHeight: 384,   // Maintain aspect ratio
     quality: 85,      // Good balance between size and quality (0-100)
     format: 'jpeg'    // Smaller file size than PNG
   };
@@ -49,19 +49,43 @@ export class ImageUtils {
       );
       
       // Resize image using Sharp with better error handling
-      const resizedBuffer = await originalImage
-        .resize(width, height, {
-          fit: 'inside',
-          withoutEnlargement: true,
-          background: { r: 255, g: 255, b: 255, alpha: 1 } // White background
-        })
-        .toFormat(opts.format, { quality: opts.quality })
-        .toBuffer()
-        .catch(error => {
-          console.warn(`⚠️ Image resize failed, using original: ${error.message}`);
-          // Return original image if resize fails
-          return originalBuffer;
-        });
+      let resizedBuffer: Buffer;
+      try {
+        resizedBuffer = await originalImage
+          .resize(width, height, {
+            fit: 'inside',
+            withoutEnlargement: true,
+            background: { r: 255, g: 255, b: 255, alpha: 1 } // White background
+          })
+          .toFormat(opts.format, { quality: opts.quality })
+          .toBuffer();
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.warn(`⚠️ Image resize failed, trying alternative approach: ${errorMessage}`);
+        
+        // Try alternative approach: convert to JPEG first, then resize
+        try {
+          resizedBuffer = await sharp(originalBuffer)
+            .jpeg({ quality: opts.quality })
+            .resize(width, height, {
+              fit: 'inside',
+              withoutEnlargement: true,
+              background: { r: 255, g: 255, b: 255, alpha: 1 }
+            })
+            .toBuffer();
+        } catch (secondError) {
+          const secondErrorMessage = secondError instanceof Error ? secondError.message : 'Unknown error';
+          console.error(`❌ Alternative resize also failed: ${secondErrorMessage}`);
+          // As last resort, return a minimal version of the original
+          resizedBuffer = await sharp(originalBuffer)
+            .jpeg({ quality: 70 })
+            .resize(Math.min(width, 384), Math.min(height, 384), {
+              fit: 'inside',
+              withoutEnlargement: true
+            })
+            .toBuffer();
+        }
+      }
       
       // Convert back to base64
       const resizedBase64 = `data:image/${opts.format};base64,${resizedBuffer.toString('base64')}`;
@@ -159,8 +183,8 @@ export class ImageUtils {
    */
   static async optimizeForOCR(imageData: string): Promise<string> {
     return this.resizeImage(imageData, {
-      maxWidth: 400,   // Much smaller for OCR
-      maxHeight: 300,
+      maxWidth: 384,   // Maximum 384px for OCR
+      maxHeight: 384,
       quality: 85,     // Good quality for text recognition (0-100)
       format: 'jpeg'
     });
@@ -173,8 +197,8 @@ export class ImageUtils {
    */
   static async optimizeForAI(imageData: string): Promise<string> {
     return this.resizeImage(imageData, {
-      maxWidth: 500,   // Much smaller for AI
-      maxHeight: 400,
+      maxWidth: 384,   // Maximum 384px for AI
+      maxHeight: 384,
       quality: 80,     // Good balance (0-100)
       format: 'jpeg'
     });
@@ -187,8 +211,8 @@ export class ImageUtils {
    */
   static async ultraOptimize(imageData: string): Promise<string> {
     return this.resizeImage(imageData, {
-      maxWidth: 300,   // Ultra-small for maximum savings
-      maxHeight: 200,
+      maxWidth: 256,   // Ultra-small for maximum savings
+      maxHeight: 256,
       quality: 75,     // Lower quality for maximum compression
       format: 'jpeg'
     });
