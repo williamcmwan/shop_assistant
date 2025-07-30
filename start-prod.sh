@@ -4,9 +4,15 @@ set -e
 echo "🚀 Starting ShopAssist Production Server"
 echo "========================================"
 
-# Set environment variables
+# Load environment variables from .env file if it exists
+if [ -f ".env" ]; then
+    echo "📄 Loading environment variables from .env file..."
+    export $(grep -v '^#' .env | xargs)
+fi
+
+# Set default environment variables
 export NODE_ENV=production
-export PORT=3000
+export PORT=${PORT:-3000}
 
 # Check if server files exist
 if [ ! -f "server/index.ts" ]; then
