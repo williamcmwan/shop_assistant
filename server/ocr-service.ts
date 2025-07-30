@@ -1,5 +1,6 @@
 import { ocrSpace } from 'ocr-space-api-wrapper';
 import { ExtractionConfig } from './config';
+import { LoggingService, APICallLog } from './logging-service';
 
 export interface OCRExtractionResult {
   success: boolean;
@@ -12,12 +13,17 @@ export interface OCRExtractionResult {
 
 export class OCRService {
   private config: ExtractionConfig;
+  private loggingService: LoggingService;
 
   constructor(config: ExtractionConfig) {
     this.config = config;
+    this.loggingService = new LoggingService();
   }
 
   async extractProductInfo(imageData: string): Promise<OCRExtractionResult> {
+    const startTime = Date.now();
+    const timestamp = new Date().toISOString();
+    
     try {
       console.log('🔄 Using OCR-Space API for extraction...');
       
@@ -40,6 +46,30 @@ export class OCRService {
         // Parse the extracted text using the existing parsing logic
         const parsed = this.parseProductInfo(extractedText);
         
+        const elapsedTime = (Date.now() - startTime) / 1000;
+        
+        // Log successful extraction
+        const logData: APICallLog = {
+          timestamp,
+          api: 'OCR',
+          elapsedTime,
+          productName: parsed.productName,
+          price: parsed.price,
+          inputTokens: 0, // OCR doesn't use tokens
+          outputTokens: 0,
+          success: true
+        };
+        this.loggingService.logAPICall(logData);
+        
+        // Save image if extraction failed (no product name or price)
+        if (!parsed.productName || parsed.price === 0) {
+          this.loggingService.saveFailedExtractionImage(
+            imageData, 
+            'OCR', 
+            'No product name or price extracted'
+          );
+        }
+        
         console.log('✅ OCR-Space extraction successful:', {
           productName: parsed.productName,
           price: parsed.price,
@@ -58,13 +88,33 @@ export class OCRService {
       }
       
     } catch (error) {
+      const elapsedTime = (Date.now() - startTime) / 1000;
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Log failed extraction
+      const logData: APICallLog = {
+        timestamp,
+        api: 'OCR',
+        elapsedTime,
+        productName: '',
+        price: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        success: false,
+        error: errorMessage
+      };
+      this.loggingService.logAPICall(logData);
+      
+      // Save failed extraction image
+      this.loggingService.saveFailedExtractionImage(imageData, 'OCR', errorMessage);
+      
       console.error('❌ OCR-Space extraction failed:', error);
       return {
         success: false,
         productName: '',
         price: 0,
         confidence: 0,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMessage,
         rawResponse: null
       };
     }
