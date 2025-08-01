@@ -104,7 +104,7 @@ Key dependencies include:
 - shadcn/ui component library (8 essential components)
 - Tailwind CSS for styling
 - OCR Space API wrapper for text extraction
-- Sharp for image processing
+- Client-side Canvas API for image processing
 - Zod for validation
 
 ### Development Dependencies (15 packages)

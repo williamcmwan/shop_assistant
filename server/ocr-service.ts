@@ -1,7 +1,6 @@
 import { ocrSpace } from 'ocr-space-api-wrapper';
 import { ExtractionConfig } from './config';
 import { LoggingService, APICallLog } from './logging-service';
-import { ImageUtils } from './image-utils';
 
 export interface OCRExtractionResult {
   success: boolean;
@@ -28,10 +27,8 @@ export class OCRService {
     try {
       console.log('🔄 Using OCR-Space API for extraction...');
       
-      // Optimize image for OCR processing
-      const optimizedImage = await ImageUtils.optimizeForOCR(imageData);
-      
-      const result = await ocrSpace(optimizedImage, {
+      // Image is already optimized on client side, use as-is
+      const result = await ocrSpace(imageData, {
         apiKey: this.config.ocrSpaceApiKey,
         language: 'eng',
         isOverlayRequired: false,

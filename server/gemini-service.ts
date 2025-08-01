@@ -1,6 +1,5 @@
 import { ExtractionConfig } from './config';
 import { LoggingService, APICallLog } from './logging-service';
-import { ImageUtils } from './image-utils';
 
 export interface GeminiExtractionResult {
   success: boolean;
@@ -32,11 +31,9 @@ export class GeminiService {
         throw new Error('Gemini API key not configured');
       }
 
-      // Optimize image for AI processing
-      const optimizedImage = await ImageUtils.optimizeForAI(imageData);
-      
+      // Image is already optimized on client side, use as-is
       // Prepare the image data (remove data URL prefix if present)
-      const base64Image = optimizedImage.includes(',') ? optimizedImage.split(',')[1] : optimizedImage;
+      const base64Image = imageData.includes(',') ? imageData.split(',')[1] : imageData;
       
       const requestBody = {
         contents: [{

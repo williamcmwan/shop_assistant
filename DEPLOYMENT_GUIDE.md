@@ -215,7 +215,7 @@ This application uses modern web technologies:
 - **UI Components**: shadcn/ui (Radix UI primitives)
 - **State Management**: TanStack Query
 - **OCR**: OCR Space API integration
-- **Image Processing**: Sharp library
+- **Image Processing**: Client-side Canvas API
 
 All dependencies are listed in `package.json` and will be installed automatically by the deployment script.
 

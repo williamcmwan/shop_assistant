@@ -84,6 +84,10 @@ export class ExtractionService {
   private async extractWithOCR(imageData: string): Promise<ExtractionResult> {
     console.log('📷 Using OCR-Space API only');
     
+    if (!this.ocrService) {
+      throw new Error('OCR service not initialized');
+    }
+    
     const result = await this.ocrService.extractProductInfo(imageData);
     
     return {
@@ -100,6 +104,10 @@ export class ExtractionService {
   private async extractWithGemini(imageData: string): Promise<ExtractionResult> {
     console.log('🤖 Using Gemini API only');
     
+    if (!this.geminiService) {
+      throw new Error('Gemini service not initialized');
+    }
+    
     const result = await this.geminiService.extractProductInfo(imageData);
     
     return {
@@ -115,6 +123,10 @@ export class ExtractionService {
 
   private async extractWithGeminiFallback(imageData: string): Promise<ExtractionResult> {
     console.log('🤖 Using Gemini API with OCR fallback');
+    
+    if (!this.geminiService || !this.ocrService) {
+      throw new Error('Services not initialized');
+    }
     
     // Try Gemini first
     const geminiResult = await this.geminiService.extractProductInfo(imageData);

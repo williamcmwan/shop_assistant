@@ -57,7 +57,7 @@ npm run dev
 ### Backend (Express + TypeScript)
 - **Framework**: Express.js with TypeScript
 - **OCR Service**: OCR Space API integration
-- **Image Processing**: Sharp library for image optimization
+- **Image Processing**: Client-side Canvas API for image optimization
 - **Validation**: Zod schemas
 
 ### Key Components

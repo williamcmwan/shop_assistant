@@ -77,7 +77,7 @@ The application uses Zod schemas for type validation:
 ### Backend Dependencies
 - **Server**: Express.js with TypeScript
 - **OCR Service**: OCR Space API wrapper for text extraction
-- **Image Processing**: Sharp library for image optimization
+- **Image Processing**: Client-side Canvas API for image optimization
 - **Development**: tsx for TypeScript execution, esbuild for production builds
 
 ### Development Tools

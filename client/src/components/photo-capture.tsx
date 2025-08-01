@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Camera, Upload, X, RotateCcw, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { processImageForManualEntry, getProductSuggestions, getPriceSuggestions } from "@/lib/ocr-service";
+import { ClientImageUtils } from "@/lib/image-utils";
 
 interface PhotoCaptureProps {
   onExtractData: (productName: string, price: number) => void;
@@ -32,34 +33,61 @@ export function PhotoCapture({ onExtractData, onClose }: PhotoCaptureProps) {
     if (file) {
       const reader = new FileReader();
       reader.onload = async (e) => {
-        const imageData = e.target?.result as string;
-        setCapturedImage(imageData);
+        const originalImageData = e.target?.result as string;
+        setCapturedImage(originalImageData);
         setIsProcessing(true);
-        setLoadingText('Loading');
-        let dotCount = 0;
-        loadingInterval.current = setInterval(() => {
-          dotCount = (dotCount + 1) % 4;
-          setLoadingText('Loading' + '.'.repeat(dotCount));
-        }, 400);
-        timeoutRef.current = setTimeout(() => {
-          setIsProcessing(false);
-          setLoadingText('Server Error...');
-          if (loadingInterval.current) clearInterval(loadingInterval.current);
-          // Clear global window variables on timeout
-          (window as any).__ocrLoadingText = 'Server Error...';
-          (window as any).__ocrIsProcessing = false;
-          // Reset file input to allow re-use
-          if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-          }
-          toast({
-            title: 'OCR Timeout',
-            description: 'No response from server after 10 seconds.',
-            variant: 'destructive',
-          });
-        }, 10000);
+        setLoadingText('Optimizing image');
+        
         try {
-          const productInfo = await processImageForManualEntry(imageData);
+          // Get original image info for logging
+          const originalInfo = await ClientImageUtils.getImageInfo(originalImageData);
+          console.log(`📸 Original image: ${originalInfo.width}x${originalInfo.height}, ~${Math.round(originalInfo.originalSize / 1024)}KB`);
+          
+          // Resize image on client side before uploading for maximum speed
+          let optimizedImageData: string;
+          try {
+            optimizedImageData = await ClientImageUtils.optimizeForUpload(originalImageData);
+          } catch (optimizeError) {
+            console.warn('⚠️ Image optimization failed, using original image:', optimizeError);
+            optimizedImageData = originalImageData;
+          }
+          
+          // Get optimized image info for comparison
+          const optimizedInfo = await ClientImageUtils.getImageInfo(optimizedImageData);
+          console.log(`🖼️ Optimized image: ${optimizedInfo.width}x${optimizedInfo.height}, ~${Math.round(optimizedInfo.originalSize / 1024)}KB`);
+          
+          // Calculate size reduction
+          const sizeReduction = ((originalInfo.originalSize - optimizedInfo.originalSize) / originalInfo.originalSize * 100).toFixed(1);
+          console.log(`📊 Size reduction: ${sizeReduction}%`);
+          
+          setLoadingText('Processing image');
+          let dotCount = 0;
+          loadingInterval.current = setInterval(() => {
+            dotCount = (dotCount + 1) % 4;
+            setLoadingText('Processing' + '.'.repeat(dotCount));
+          }, 400);
+          
+          timeoutRef.current = setTimeout(() => {
+            setIsProcessing(false);
+            setLoadingText('Server Error...');
+            if (loadingInterval.current) clearInterval(loadingInterval.current);
+            // Clear global window variables on timeout
+            (window as any).__ocrLoadingText = 'Server Error...';
+            (window as any).__ocrIsProcessing = false;
+            // Reset file input to allow re-use
+            if (fileInputRef.current) {
+              fileInputRef.current.value = '';
+            }
+            toast({
+              title: 'OCR Timeout',
+              description: 'No response from server after 15 seconds.',
+              variant: 'destructive',
+            });
+          }, 15000);
+          
+          // Process the optimized image
+          const productInfo = await processImageForManualEntry(optimizedImageData);
+          
           if (timeoutRef.current) clearTimeout(timeoutRef.current);
           if (loadingInterval.current) clearInterval(loadingInterval.current);
           setLoadingText(null);
@@ -68,6 +96,7 @@ export function PhotoCapture({ onExtractData, onClose }: PhotoCaptureProps) {
           (window as any).__ocrLoadingText = null;
           (window as any).__ocrIsProcessing = false;
           onExtractData(productInfo.productName, productInfo.price);
+          
         } catch (error) {
           if (timeoutRef.current) clearTimeout(timeoutRef.current);
           if (loadingInterval.current) clearInterval(loadingInterval.current);
