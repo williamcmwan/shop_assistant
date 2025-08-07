@@ -1,11 +1,12 @@
 import { ShoppingItem } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { Trash2, GripVertical } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Trash2, GripVertical, Tag } from "lucide-react";
+import { cn, canApplyDiscount, calculateItemTotal } from "@/lib/utils";
 
 interface ShoppingItemProps {
   item: ShoppingItem;
   onRemove: (id: string) => void;
+  onToggleDiscount?: (id: string) => void;
   isDragging?: boolean;
   isInGroup?: boolean;
 }
@@ -13,6 +14,7 @@ interface ShoppingItemProps {
 export function ShoppingItemComponent({ 
   item, 
   onRemove, 
+  onToggleDiscount,
   isDragging = false,
   isInGroup = false 
 }: ShoppingItemProps) {
@@ -32,10 +34,32 @@ export function ShoppingItemComponent({
           <div className="flex items-center space-x-3 mt-1">
             <span className="text-sm text-gray-600">€{item.price.toFixed(2)}</span>
             <span className="text-sm text-gray-600">Qty: {item.quantity}</span>
-            <span className="text-sm font-medium text-secondary">€{item.total.toFixed(2)}</span>
+            <span className={cn(
+              "text-sm font-medium",
+              item.discountApplied ? "text-green-600" : "text-secondary"
+            )}>
+              €{item.total.toFixed(2)}
+              {item.discountApplied && <span className="ml-1 text-xs">(discounted)</span>}
+            </span>
           </div>
         </div>
         <div className="flex items-center space-x-2">
+          {item.discount && canApplyDiscount(item) && onToggleDiscount && (
+            <Button
+              variant={item.discountApplied ? "default" : "outline"}
+              size="sm"
+              onClick={() => onToggleDiscount(item.id)}
+              className={cn(
+                "p-1 text-xs",
+                item.discountApplied 
+                  ? "bg-green-600 hover:bg-green-700 text-white" 
+                  : "text-green-600 border-green-600 hover:bg-green-50"
+              )}
+              title={`Apply discount: ${item.discount.display}`}
+            >
+              <Tag className="h-3 w-3" />
+            </Button>
+          )}
           <GripVertical className="h-4 w-4 text-gray-400" />
           <Button
             variant="ghost"

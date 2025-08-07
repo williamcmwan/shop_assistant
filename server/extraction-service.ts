@@ -12,6 +12,12 @@ export interface ExtractionResult {
   fallbackUsed?: boolean;
   fallbackReason?: string;
   rawResponse?: any;
+  discount?: {
+    type: "bulk_price" | "buy_x_get_y";
+    quantity: number;
+    value: number;
+    display: string;
+  };
 }
 
 export class ExtractionService {
@@ -97,7 +103,8 @@ export class ExtractionService {
       confidence: result.confidence,
       backend: 'ocr',
       error: result.error,
-      rawResponse: result.rawResponse
+      rawResponse: result.rawResponse,
+      discount: result.discount
     };
   }
 
@@ -117,7 +124,8 @@ export class ExtractionService {
       confidence: result.confidence,
       backend: 'gemini',
       error: result.error,
-      rawResponse: result.rawResponse
+      rawResponse: result.rawResponse,
+      discount: result.discount
     };
   }
 
@@ -139,7 +147,8 @@ export class ExtractionService {
         price: geminiResult.price,
         confidence: geminiResult.confidence,
         backend: 'gemini',
-        rawResponse: geminiResult.rawResponse
+        rawResponse: geminiResult.rawResponse,
+        discount: geminiResult.discount
       };
     }
     
@@ -156,6 +165,7 @@ export class ExtractionService {
       fallbackUsed: true,
       fallbackReason: geminiResult.error || `Low confidence: ${geminiResult.confidence}`,
       error: ocrResult.error,
+      discount: ocrResult.discount || geminiResult.discount, // Use OCR discount if available, otherwise Gemini
       rawResponse: {
         gemini: geminiResult.rawResponse,
         ocr: ocrResult.rawResponse

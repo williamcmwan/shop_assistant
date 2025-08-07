@@ -1,16 +1,19 @@
-# Shop Assistant v1.0 🛒
+# Shop Assistant v1.0.1 🛒
 
 A modern shopping assistant application with Camera, OCR and AI price tag detection capabilities.
 
+**Latest Update**: Fixed info icon sizing and improved UI responsiveness.
+
 ## ✨ Features
 
-- **📸 OCR Price Tag Scanning** - Take photos of price tags and automatically extract product information
+- **📸 OCR Price Tag Scanning with Multi-Purchase Discounts** - Take photos of price tags and automatically extract product information including volume discounts (3 for €10, 3 for 2, etc.)
 - **📝 Shopping List Management** - Create and manage multiple shopping lists
 - **🎯 Product Suggestions** - Smart suggestions for product names and prices
 - **📱 Mobile-First Design** - Optimized for mobile devices
 - **⚡ Fast & Lightweight** - Clean, optimized codebase with minimal dependencies
 - **🖼️ Image Processing** - Automatic image resizing for optimal OCR performance
 - **🔄 Smart Deployment** - Universal deployment script with intelligent cleanup
+- **💰 Discount Management** - Automatic detection and application of multi-purchase discounts with smart grouping
 
 ## 🚀 Quick Start
 
@@ -91,6 +94,28 @@ client/src/
     ├── not-found.tsx        # 404 page
     └── shopping-list.tsx    # Shopping list view
 ```
+
+## 📱 Usage
+
+### Creating Shopping Lists
+1. **Create a Shopping List**: Click "New List" and give it a name
+2. **Add Items**: Use the form to add items with prices and quantities
+
+### OCR Price Scanning with Discount Detection
+3. **Scan Price Tags**: Use the camera button to scan price tags automatically
+   - **Multi-Purchase Discounts**: Automatically detects "3 for €10" or "3 for 2" offers
+   - **Smart Quantity Setting**: Sets quantity to discount amount for immediate savings
+   - **Discount Display**: Shows discount info like "(3 for €10)" in product name
+
+### Managing Discounts
+4. **Toggle Discounts**: Use the green tag button to apply/remove discounts
+   - **Automatic Application**: Discounts apply when quantity matches requirements
+   - **Visual Indicators**: Green pricing shows active discounts
+   - **Smart Grouping**: Discounted items stay together in groups
+
+### Smart Grouping
+5. **Enable Split Mode**: Automatically group items by target spending amounts
+6. **Track Totals**: Monitor your spending with real-time calculations including discount savings
 
 ## 🔧 Configuration
 

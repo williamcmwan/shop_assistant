@@ -4,7 +4,8 @@ import { ShoppingList } from "@shared/schema";
 import { storageService } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ShoppingCart, Plus, Edit2, Trash2, ShoppingBag } from "lucide-react";
+import { ShoppingCart, Plus, Edit2, Trash2, ShoppingBag, Info } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +20,7 @@ import {
 
 export default function MainPage() {
   const [lists, setLists] = useState<ShoppingList[]>([]);
+  const { toast } = useToast();
 
   useEffect(() => {
     const savedLists = storageService.getAllLists();
@@ -31,6 +33,11 @@ export default function MainPage() {
     setLists(updatedLists);
   };
 
+  const handleShowSplashScreen = () => {
+    localStorage.removeItem('splashScreenShown');
+    window.location.reload();
+  };
+
   return (
     <div className="max-w-md mx-auto bg-white min-h-screen">
       <div className="p-4">
@@ -40,8 +47,18 @@ export default function MainPage() {
             <h1 className="text-2xl font-bold text-gray-900">Shopping Lists</h1>
             <p className="text-sm text-gray-600">Manage your shopping efficiently</p>
           </div>
-          <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center">
-            <ShoppingCart className="text-white text-lg" />
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              onClick={handleShowSplashScreen}
+              className="text-gray-600 hover:text-gray-800 p-2"
+              title="Show app info"
+            >
+              <Info className="h-20 w-20" />
+            </Button>
+            <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center">
+              <ShoppingCart className="text-white text-lg" />
+            </div>
           </div>
         </div>
 

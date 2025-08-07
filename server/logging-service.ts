@@ -15,6 +15,7 @@ export interface APICallLog {
   outputTokens: number;
   success: boolean;
   error?: string;
+  discount?: string; // Display format like "(3 for €10)" or "(3 for 2)"
 }
 
 export class LoggingService {
@@ -60,7 +61,8 @@ export class LoggingService {
           'input_tokens',
           'output_tokens',
           'success',
-          'error'
+          'error',
+          'discount'
         ].join(',');
         
         fs.writeFileSync(this.csvFilePath, headers + '\n');
@@ -82,7 +84,8 @@ export class LoggingService {
         logData.inputTokens,
         logData.outputTokens,
         logData.success ? 'true' : 'false',
-        logData.error ? `"${logData.error.replace(/"/g, '""')}"` : ''
+        logData.error ? `"${logData.error.replace(/"/g, '""')}"` : '',
+        logData.discount ? `"${logData.discount.replace(/"/g, '""')}"` : ''
       ].join(',');
 
       fs.appendFileSync(this.csvFilePath, csvLine + '\n');

@@ -9,6 +9,12 @@ export interface OCRExtractionResult {
   confidence: number;
   error?: string;
   rawResponse?: any;
+  discount?: {
+    type: "bulk_price" | "buy_x_get_y";
+    quantity: number;
+    value: number;
+    display: string;
+  };
 }
 
 export class OCRService {
@@ -58,7 +64,8 @@ export class OCRService {
           price: parsed.price,
           inputTokens: 0, // OCR doesn't use tokens
           outputTokens: 0,
-          success: true
+          success: true,
+          discount: parsed.discount?.display
         };
         this.loggingService.logAPICall(logData);
         
@@ -82,6 +89,7 @@ export class OCRService {
           productName: parsed.productName,
           price: parsed.price,
           confidence: confidence,
+          discount: parsed.discount,
           rawResponse: result
         };
       } else {
@@ -103,6 +111,7 @@ export class OCRService {
         outputTokens: 0,
         success: false,
         error: errorMessage
+        // No discount field for failed extractions
       };
       this.loggingService.logAPICall(logData);
       
@@ -121,8 +130,69 @@ export class OCRService {
     }
   }
 
+  // Detect discount patterns from OCR text
+  private detectDiscount(text: string): { type: "bulk_price" | "buy_x_get_y", quantity: number, value: number, display: string } | null {
+    const discountPatterns = [
+      // Type 1: bulk_price - "3 for €10", "2 for 5.99", etc.
+      /(\d+)\s+for\s+€?\s*(\d+(?:[.,]\d{2})?)/gi,
+      // Type 2: buy_x_get_y - "3 for 2", "2 for 1", etc.
+      /(\d+)\s+for\s+(\d+)(?!\d*[.,]\d)/gi, // Negative lookahead to avoid matching prices
+    ];
+
+    // Unit price indicators that should NOT be treated as discounts
+    const unitPriceIndicators = [
+      /each/i,
+      /per\s*unit/i,
+      /per\s*piece/i,
+      /per\s*item/i,
+      /unit\s*price/i,
+      /individual\s*price/i
+    ];
+
+    for (const pattern of discountPatterns) {
+      const matches = Array.from(text.matchAll(pattern));
+      for (const match of matches) {
+        const quantity = parseInt(match[1], 10);
+        const value = parseFloat(match[2].replace(',', '.'));
+        
+        // Check if this is a unit price indicator (not a discount)
+        const isUnitPrice = unitPriceIndicators.some(indicator => 
+          indicator.test(text) || 
+          text.toLowerCase().includes('each') ||
+          text.toLowerCase().includes('per unit')
+        );
+        
+        if (isUnitPrice) {
+          console.log('Skipping unit price indicator:', match[0]);
+          continue;
+        }
+        
+        // Determine discount type
+        if (match[0].includes('€') || match[2].includes('.') || match[2].includes(',')) {
+          // Type 1: bulk_price
+          return {
+            type: "bulk_price",
+            quantity,
+            value,
+            display: `(${quantity} for €${value.toFixed(2)})`
+          };
+        } else if (quantity > value) {
+          // Type 2: buy_x_get_y (only if getting more than paying for)
+          return {
+            type: "buy_x_get_y",
+            quantity,
+            value,
+            display: `(${quantity} for ${value})`
+          };
+        }
+      }
+    }
+    
+    return null;
+  }
+
   // Reuse the existing parsing logic from the client
-  private parseProductInfo(text: string): { productName: string; price: number } {
+  private parseProductInfo(text: string): { productName: string; price: number; discount?: { type: "bulk_price" | "buy_x_get_y", quantity: number, value: number, display: string } } {
     console.log("=== Starting OCR Text Parsing ===");
     console.log("Original text:", text);
     
@@ -131,6 +201,12 @@ export class OCRService {
     
     const lines = cleanedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
     console.log("Lines after splitting:", lines);
+
+    // Detect discount information
+    const discount = this.detectDiscount(text);
+    if (discount) {
+      console.log("Discount detected:", discount);
+    }
     
     let productName = "";
     let price = 0;
@@ -274,9 +350,16 @@ export class OCRService {
     console.log("=== Final Result ===");
     console.log("Product Name:", productName);
     console.log("Price:", price);
+    if (discount) {
+      console.log("Discount:", discount);
+    }
     console.log("===================");
     
-    return { productName, price };
+    const result: { productName: string; price: number; discount?: { type: "bulk_price" | "buy_x_get_y", quantity: number, value: number, display: string } } = { productName, price };
+    if (discount) {
+      result.discount = discount;
+    }
+    return result;
   }
 
   private preprocessText(text: string): string {

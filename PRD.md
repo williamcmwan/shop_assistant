@@ -79,12 +79,30 @@ To simplify and optimize the shopping experience by providing users with intelli
 - Handle promotional pricing (NOW, WAS, ONLY prices)
 - Support cents notation (40c = €0.40)
 - Filter out irrelevant text and symbols
+- Detect multi-purchase discounts (bulk pricing and buy-x-get-y offers)
 
 **Acceptance Criteria**:
 - Accurate price extraction from common European price formats
 - Product name cleaning removes promotional text
 - Prefer current/sale prices over original prices
 - Handle multi-line price tags correctly
+- Identify and parse discount patterns like "3 for €10" or "3 for 2"
+
+#### 2.2.3 Multi-Purchase Discount Detection
+**User Story**: As a user, I want the system to automatically detect and apply volume discounts from price tags.
+
+**Requirements**:
+- Detect Type 1 discounts: bulk pricing (e.g., "3 for €10", "2 for €5.99")
+- Detect Type 2 discounts: buy-x-get-y offers (e.g., "3 for 2", "2 for 1")
+- Display discount information in product name as visual indicator
+- Automatically set appropriate quantity when discount is detected
+- Apply discount calculation when quantity matches discount criteria
+
+**Acceptance Criteria**:
+- Recognize common discount text patterns from OCR
+- Display discount info as "(3 for €10)" or "(3 for 2)" after product name
+- Set initial quantity to discount quantity for immediate benefit
+- Correctly calculate savings for both discount types
 
 ### 2.3 Smart Grouping & Budget Distribution
 
@@ -98,12 +116,14 @@ To simplify and optimize the shopping experience by providing users with intelli
 - 20% overflow tolerance for better item placement
 - Visual group containers with totals
 - Manual item reassignment between groups
+- Special handling for discounted items (cannot be split across groups)
 
 **Acceptance Criteria**:
 - Groups maintain target amounts within tolerance
 - Algorithm minimizes group count while respecting limits
 - Users can manually override automatic grouping
 - Real-time rebalancing when items change
+- Discounted items are treated as single units in grouping algorithm
 
 #### 2.3.2 Group Management
 **User Story**: As a user, I want to create, modify, and delete groups with custom target amounts.
@@ -122,9 +142,43 @@ To simplify and optimize the shopping experience by providing users with intelli
 - Groups show current total vs. target amount
 - Color coding for budget status
 
-### 2.4 User Interface & Experience
+### 2.4 Discount Management & Application
 
-#### 2.4.1 Responsive Design
+#### 2.4.1 Discount Visualization
+**User Story**: As a user, I want to clearly see which items have available discounts and their current status.
+
+**Requirements**:
+- Visual indicators for items with available discounts
+- Clear display of discount information in item names
+- Color-coded pricing to show discount application status
+- Toggle buttons for applying/removing discounts
+- Tooltip information showing discount details
+
+**Acceptance Criteria**:
+- Discount information appears as "(3 for €10)" in product names
+- Green pricing indicates active discounts
+- Discount toggle button visible when criteria are met
+- Clear visual distinction between regular and discounted items
+
+#### 2.4.2 Automatic Discount Application
+**User Story**: As a user, I want discounts to be automatically applied when I select the qualifying quantity.
+
+**Requirements**:
+- Automatic discount detection during OCR scanning
+- Automatic quantity setting to discount requirements
+- Real-time price calculation with discount rules
+- Prevention of discount splitting across groups
+- Manual discount toggle for user control
+
+**Acceptance Criteria**:
+- Discounts automatically applied when quantity matches requirements
+- Price calculations reflect both bulk pricing and buy-x-get-y discounts
+- Users can manually toggle discounts on/off
+- Discounted items cannot be split during grouping
+
+### 2.5 User Interface & Experience
+
+#### 2.5.1 Responsive Design
 **User Story**: As a user, I want the application to work seamlessly across all my devices.
 
 **Requirements**:
@@ -141,7 +195,7 @@ To simplify and optimize the shopping experience by providing users with intelli
 - Keyboard navigation support
 - Screen reader compatibility
 
-#### 2.4.2 Modern UI Components
+#### 2.5.2 Modern UI Components
 **User Story**: As a user, I want a clean, intuitive interface that's easy to navigate.
 
 **Requirements**:
@@ -344,7 +398,7 @@ To simplify and optimize the shopping experience by providing users with intelli
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: Current Date  
+**Document Version**: 1.0.1  
+**Last Updated**: December 2024  
 **Next Review**: Quarterly  
 **Owner**: Product Team

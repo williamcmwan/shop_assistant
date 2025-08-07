@@ -16,6 +16,7 @@ export class BinPackingAlgorithm {
    * First Fit Decreasing algorithm for bin packing
    * Sorts items in descending order by value and places each item in the first bin that has enough space
    * Can split items with multiple quantities across different groups
+   * Items with applied discounts are kept together as single units
    */
   static firstFitDecreasing(
     items: ShoppingItem[],
@@ -23,23 +24,37 @@ export class BinPackingAlgorithm {
     numberOfGroups: number
   ): ShoppingGroup[] {
     // Create individual units from items with quantities > 1
+    // Don't split items with applied discounts - they must stay together
     const individualItems: BinPackingItem[] = [];
     
     items.forEach(item => {
-      const unitPrice = item.price;
-      for (let i = 0; i < item.quantity; i++) {
+      // Don't split items with applied discounts - treat as single unit
+      if (item.discount && item.discountApplied) {
         individualItems.push({
-          id: `${item.id}-${i}`,
-          value: unitPrice,
+          id: item.id,
+          value: item.total,
           item: {
             ...item,
-            id: `${item.id}-${i}`,
-            quantity: 1,
-            total: unitPrice,
-            originalQuantity: item.quantity,
-            splitIndex: i + 1 // Add 1-based index for display
+            // Keep original properties for discounted items
           }
         });
+      } else {
+        // Split non-discounted items into individual units
+        const unitPrice = item.price;
+        for (let i = 0; i < item.quantity; i++) {
+          individualItems.push({
+            id: `${item.id}-${i}`,
+            value: unitPrice,
+            item: {
+              ...item,
+              id: `${item.id}-${i}`,
+              quantity: 1,
+              total: unitPrice,
+              originalQuantity: item.quantity,
+              splitIndex: i + 1 // Add 1-based index for display
+            }
+          });
+        }
       }
     });
 
@@ -89,6 +104,7 @@ export class BinPackingAlgorithm {
    * Best Fit algorithm for bin packing
    * Places each item in the bin with the least remaining space that can still fit the item
    * Can split items with multiple quantities across different groups
+   * Items with applied discounts are kept together as single units
    */
   static bestFit(
     items: ShoppingItem[],
@@ -96,23 +112,37 @@ export class BinPackingAlgorithm {
     numberOfGroups: number
   ): ShoppingGroup[] {
     // Create individual units from items with quantities > 1
+    // Don't split items with applied discounts - they must stay together
     const individualItems: BinPackingItem[] = [];
     
     items.forEach(item => {
-      const unitPrice = item.price;
-      for (let i = 0; i < item.quantity; i++) {
+      // Don't split items with applied discounts - treat as single unit
+      if (item.discount && item.discountApplied) {
         individualItems.push({
-          id: `${item.id}-${i}`,
-          value: unitPrice,
+          id: item.id,
+          value: item.total,
           item: {
             ...item,
-            id: `${item.id}-${i}`,
-            quantity: 1,
-            total: unitPrice,
-            originalQuantity: item.quantity,
-            splitIndex: i + 1 // Add 1-based index for display
+            // Keep original properties for discounted items
           }
         });
+      } else {
+        // Split non-discounted items into individual units
+        const unitPrice = item.price;
+        for (let i = 0; i < item.quantity; i++) {
+          individualItems.push({
+            id: `${item.id}-${i}`,
+            value: unitPrice,
+            item: {
+              ...item,
+              id: `${item.id}-${i}`,
+              quantity: 1,
+              total: unitPrice,
+              originalQuantity: item.quantity,
+              splitIndex: i + 1 // Add 1-based index for display
+            }
+          });
+        }
       }
     });
 
@@ -208,21 +238,34 @@ export class BinPackingAlgorithm {
     }
 
     // Convert items to individual units
+    // Don't split items with applied discounts - they must stay together
     const individualItems: { item: ShoppingItem; value: number }[] = [];
     for (const item of items) {
-      for (let i = 0; i < item.quantity; i++) {
-        const unitPrice = item.total / item.quantity;
+      // Don't split items with applied discounts - treat as single unit
+      if (item.discount && item.discountApplied) {
         individualItems.push({
           item: {
             ...item,
-            id: `${item.id}-${i + 1}`,
-            quantity: 1,
-            total: unitPrice,
-            originalQuantity: item.quantity,
-            splitIndex: i + 1
+            // Keep original properties for discounted items
           },
-          value: unitPrice
+          value: item.total
         });
+      } else {
+        // Split non-discounted items into individual units
+        for (let i = 0; i < item.quantity; i++) {
+          const unitPrice = item.total / item.quantity;
+          individualItems.push({
+            item: {
+              ...item,
+              id: `${item.id}-${i + 1}`,
+              quantity: 1,
+              total: unitPrice,
+              originalQuantity: item.quantity,
+              splitIndex: i + 1
+            },
+            value: unitPrice
+          });
+        }
       }
     }
 
@@ -230,17 +273,63 @@ export class BinPackingAlgorithm {
     const sortedGroups = [...groups].sort((a, b) => b.targetAmount - a.targetAmount);
     const sortedItems = [...individualItems].sort((a, b) => b.value - a.value);
 
-    // Phase 1: Greedy fill with target optimization
-    const remainingItems = [...sortedItems];
-    const filledGroups = sortedGroups.map(g => ({ ...g, items: [...g.items], total: g.total }));
+    // Try multiple approaches and pick the best one
+    const approaches = [
+      this.tryGreedyApproach(sortedGroups, sortedItems),
+      this.tryBalancedApproach(sortedGroups, sortedItems),
+      this.tryTargetFirstApproach(sortedGroups, sortedItems)
+    ];
 
-    // Fill each group optimally
+    // Find the best result based on how many groups meet target and total variance
+    let bestResult = approaches[0];
+    let bestScore = this.calculateGroupingScore(approaches[0]);
+
+    for (const result of approaches) {
+      const score = this.calculateGroupingScore(result);
+      if (score > bestScore) {
+        bestScore = score;
+        bestResult = result;
+      }
+    }
+
+    // Apply final optimization to the best result
+    const optimizedGroups = this.optimizeBySwapping(bestResult);
+    
+    return optimizedGroups;
+  }
+
+  private static calculateGroupingScore(groups: ShoppingGroup[]): number {
+    let score = 0;
+    let groupsOverTarget = 0;
+    
+    for (const group of groups) {
+      if (group.total >= group.targetAmount) {
+        groupsOverTarget++;
+        // Bonus for being over target, but penalty for being too far over
+        const overage = group.total - group.targetAmount;
+        score += 1000 - Math.min(overage * 10, 500); // Prefer small overages
+      } else {
+        // Heavy penalty for being under target
+        const shortage = group.targetAmount - group.total;
+        score -= shortage * 100;
+      }
+    }
+    
+    // Bonus for having more groups over target
+    score += groupsOverTarget * 10000;
+    
+    return score;
+  }
+
+  private static tryGreedyApproach(groups: ShoppingGroup[], items: ShoppingItem[]): ShoppingGroup[] {
+    const filledGroups = groups.map(g => ({ ...g, items: [...g.items], total: g.total }));
+    const remainingItems = [...items];
+
+    // Fill each group greedily
     for (let g = 0; g < filledGroups.length; g++) {
       const group = filledGroups[g];
       
-      // Try to fill the group to exactly its target or as close as possible
       while (group.total < group.targetAmount && remainingItems.length > 0) {
-        // Find the best item to add (closest to target without going over, or smallest overfill)
         let bestIdx = -1;
         let bestScore = -Infinity;
         
@@ -249,7 +338,6 @@ export class BinPackingAlgorithm {
           const distanceToTarget = Math.abs(newTotal - group.targetAmount);
           const isOverTarget = newTotal > group.targetAmount;
           
-          // Prefer items that get us closer to target, with slight preference for not going over
           const score = -distanceToTarget - (isOverTarget ? 0.1 : 0);
           
           if (score > bestScore) {
@@ -266,53 +354,142 @@ export class BinPackingAlgorithm {
       }
     }
 
-    // Phase 2: Redistribute remaining items optimally
+    // Distribute remaining items
     while (remainingItems.length > 0) {
-      // Find the group that would benefit most from an additional item
-      let bestGroupIdx = -1;
-      let bestImprovement = -Infinity;
+      const bestGroup = filledGroups.reduce((best, group) => 
+        Math.abs(group.total - group.targetAmount) < Math.abs(best.total - best.targetAmount) ? group : best
+      );
       
-      for (let g = 0; g < filledGroups.length; g++) {
-        const group = filledGroups[g];
-        const currentDistance = Math.abs(group.total - group.targetAmount);
+      const item = remainingItems.shift()!;
+      bestGroup.items.push(item.item);
+      bestGroup.total = Number((bestGroup.total + item.value).toFixed(2));
+    }
+
+    return filledGroups;
+  }
+
+  private static tryBalancedApproach(groups: ShoppingGroup[], items: ShoppingItem[]): ShoppingGroup[] {
+    const filledGroups = groups.map(g => ({ ...g, items: [...g.items], total: g.total }));
+    const remainingItems = [...items];
+
+    // Distribute items more evenly across groups
+    let currentGroup = 0;
+    
+    while (remainingItems.length > 0) {
+      const group = filledGroups[currentGroup % filledGroups.length];
+      
+      // Find the best item for this group
+      let bestIdx = -1;
+      let bestScore = -Infinity;
+      
+      for (let i = 0; i < remainingItems.length; i++) {
+        const newTotal = group.total + remainingItems[i].value;
+        const distanceToTarget = Math.abs(newTotal - group.targetAmount);
+        const isOverTarget = newTotal > group.targetAmount;
         
-        // Try each remaining item
-        for (let i = 0; i < remainingItems.length; i++) {
-          const newTotal = group.total + remainingItems[i].value;
-          const newDistance = Math.abs(newTotal - group.targetAmount);
-          const improvement = currentDistance - newDistance;
-          
-          if (improvement > bestImprovement) {
-            bestImprovement = improvement;
-            bestGroupIdx = g;
-          }
+        // Prefer items that get us closer to target
+        const score = -distanceToTarget - (isOverTarget ? 0.1 : 0);
+        
+        if (score > bestScore) {
+          bestScore = score;
+          bestIdx = i;
         }
       }
       
-      if (bestGroupIdx === -1) break;
+      if (bestIdx === -1) break;
       
-      // Add the best item to the best group
-      const bestItem = remainingItems.shift()!;
-      filledGroups[bestGroupIdx].items.push(bestItem.item);
-      filledGroups[bestGroupIdx].total = Number((filledGroups[bestGroupIdx].total + bestItem.value).toFixed(2));
+      const selectedItem = remainingItems.splice(bestIdx, 1)[0];
+      group.items.push(selectedItem.item);
+      group.total = Number((group.total + selectedItem.value).toFixed(2));
+      
+      currentGroup++;
     }
 
-    // Phase 3: Try to optimize by swapping items between groups
-    const optimizedGroups = this.optimizeBySwapping(filledGroups);
+    return filledGroups;
+  }
+
+  private static tryTargetFirstApproach(groups: ShoppingGroup[], items: ShoppingItem[]): ShoppingGroup[] {
+    const filledGroups = groups.map(g => ({ ...g, items: [...g.items], total: g.total }));
+    const remainingItems = [...items];
+
+    // First, try to get each group to exactly target amount
+    for (let g = 0; g < filledGroups.length; g++) {
+      const group = filledGroups[g];
+      
+      while (group.total < group.targetAmount && remainingItems.length > 0) {
+        // Find item that gets us closest to target without going over
+        let bestIdx = -1;
+        let bestDistance = Infinity;
+        
+        for (let i = 0; i < remainingItems.length; i++) {
+          const newTotal = group.total + remainingItems[i].value;
+          if (newTotal <= group.targetAmount) {
+            const distance = group.targetAmount - newTotal;
+            if (distance < bestDistance) {
+              bestDistance = distance;
+              bestIdx = i;
+            }
+          }
+        }
+        
+        if (bestIdx === -1) break;
+        
+        const selectedItem = remainingItems.splice(bestIdx, 1)[0];
+        group.items.push(selectedItem.item);
+        group.total = Number((group.total + selectedItem.value).toFixed(2));
+      }
+    }
+
+    // Then, try to get all groups over target by moving items
+    const underTargetGroups = filledGroups.filter(g => g.total < g.targetAmount);
+    const overTargetGroups = filledGroups.filter(g => g.total > g.targetAmount);
     
-    return optimizedGroups;
+    for (const underGroup of underTargetGroups) {
+      for (const overGroup of overTargetGroups) {
+        // Find items that could help under group reach target
+        for (let i = 0; i < overGroup.items.length; i++) {
+          const item = overGroup.items[i];
+          
+          if (item.discount && item.discountApplied) continue;
+          
+          const newUnderTotal = underGroup.total + item.total;
+          const newOverTotal = overGroup.total - item.total;
+          
+          if (newUnderTotal >= underGroup.targetAmount && newOverTotal >= overGroup.targetAmount) {
+            overGroup.items.splice(i, 1);
+            underGroup.items.push(item);
+            overGroup.total = Number(newOverTotal.toFixed(2));
+            underGroup.total = Number(newUnderTotal.toFixed(2));
+            break;
+          }
+        }
+      }
+    }
+
+    // Distribute remaining items
+    while (remainingItems.length > 0) {
+      const bestGroup = filledGroups.reduce((best, group) => 
+        Math.abs(group.total - group.targetAmount) < Math.abs(best.total - best.targetAmount) ? group : best
+      );
+      
+      const item = remainingItems.shift()!;
+      bestGroup.items.push(item.item);
+      bestGroup.total = Number((bestGroup.total + item.value).toFixed(2));
+    }
+
+    return filledGroups;
   }
 
   private static optimizeBySwapping(groups: ShoppingGroup[]): ShoppingGroup[] {
     let improved = true;
     let iterations = 0;
-    const maxIterations = 50; // Prevent infinite loops
+    const maxIterations = 200; // Increased iterations for better optimization
     
     while (improved && iterations < maxIterations) {
       improved = false;
       iterations++;
       
-      // Try all possible swaps between groups
+      // Phase 1: Try all possible swaps between groups
       for (let i = 0; i < groups.length; i++) {
         for (let j = i + 1; j < groups.length; j++) {
           const groupA = groups[i];
@@ -328,6 +505,12 @@ export class BinPackingAlgorithm {
             for (let itemBIdx = 0; itemBIdx < groupB.items.length; itemBIdx++) {
               const itemA = groupA.items[itemAIdx];
               const itemB = groupB.items[itemBIdx];
+              
+              // Don't swap discounted items - they must stay together to maintain discount integrity
+              if ((itemA.discount && itemA.discountApplied) || 
+                  (itemB.discount && itemB.discountApplied)) {
+                continue;
+              }
               
               // Calculate new totals after swap
               const newTotalA = groupA.total - itemA.total + itemB.total;
@@ -352,6 +535,99 @@ export class BinPackingAlgorithm {
             }
             if (improved) break;
           }
+        }
+      }
+      
+      // Phase 2: Try moving single items to better groups (if no swaps improved)
+      if (!improved) {
+        for (let i = 0; i < groups.length; i++) {
+          for (let j = 0; j < groups.length; j++) {
+            if (i === j) continue;
+            
+            const sourceGroup = groups[i];
+            const targetGroup = groups[j];
+            
+            // Try moving each item from source to target
+            for (let itemIdx = 0; itemIdx < sourceGroup.items.length; itemIdx++) {
+              const item = sourceGroup.items[itemIdx];
+              
+              // Don't move discounted items
+              if (item.discount && item.discountApplied) {
+                continue;
+              }
+              
+              // Calculate current and new distances
+              const currentSourceDistance = Math.abs(sourceGroup.total - sourceGroup.targetAmount);
+              const currentTargetDistance = Math.abs(targetGroup.total - targetGroup.targetAmount);
+              const currentTotalDistance = currentSourceDistance + currentTargetDistance;
+              
+              const newSourceTotal = sourceGroup.total - item.total;
+              const newTargetTotal = targetGroup.total + item.total;
+              const newSourceDistance = Math.abs(newSourceTotal - sourceGroup.targetAmount);
+              const newTargetDistance = Math.abs(newTargetTotal - targetGroup.targetAmount);
+              const newTotalDistance = newSourceDistance + newTargetDistance;
+              
+              // If moving the item improves the overall fit, do it
+              if (newTotalDistance < currentTotalDistance) {
+                // Move the item
+                sourceGroup.items.splice(itemIdx, 1);
+                targetGroup.items.push(item);
+                sourceGroup.total = Number(newSourceTotal.toFixed(2));
+                targetGroup.total = Number(newTargetTotal.toFixed(2));
+                
+                improved = true;
+                break;
+              }
+            }
+            if (improved) break;
+          }
+          if (improved) break;
+        }
+      }
+      
+      // Phase 3: Try to get all groups over target by moving items from over-target to under-target groups
+      if (!improved) {
+        const underTargetGroups = groups.filter(g => g.total < g.targetAmount);
+        const overTargetGroups = groups.filter(g => g.total > g.targetAmount);
+        
+        for (const underGroup of underTargetGroups) {
+          for (const overGroup of overTargetGroups) {
+            // Find the best item to move from over to under
+            let bestItem = null;
+            let bestImprovement = 0;
+            
+            for (const item of overGroup.items) {
+              // Don't move discounted items
+              if (item.discount && item.discountApplied) {
+                continue;
+              }
+              
+              const newUnderTotal = underGroup.total + item.total;
+              const newOverTotal = overGroup.total - item.total;
+              
+              // Check if this move helps get under group closer to target
+              if (newUnderTotal >= underGroup.targetAmount && newOverTotal >= overGroup.targetAmount) {
+                const improvement = (newUnderTotal - underGroup.targetAmount) - (overGroup.total - overGroup.targetAmount);
+                if (improvement > bestImprovement) {
+                  bestImprovement = improvement;
+                  bestItem = item;
+                }
+              }
+            }
+            
+            if (bestItem) {
+              // Move the best item
+              const itemIndex = overGroup.items.indexOf(bestItem);
+              overGroup.items.splice(itemIndex, 1);
+              underGroup.items.push(bestItem);
+              overGroup.total = Number((overGroup.total - bestItem.total).toFixed(2));
+              underGroup.total = Number((underGroup.total + bestItem.total).toFixed(2));
+              
+              improved = true;
+              break;
+            }
+          }
+          if (improved) break;
         }
       }
     }
@@ -383,10 +659,17 @@ function tryRearrange(groups: ShoppingGroup[], allItems: ShoppingItem[], depth =
     for (const { group: overGroup, index: overIdx } of overTargetGroups) {
       for (let m = 0; m < underGroup.items.length; m++) {
         for (let n = 0; n < overGroup.items.length; n++) {
+          const itemA = underGroup.items[m];
+          const itemB = overGroup.items[n];
+          
+          // Don't swap discounted items - they must stay together to maintain discount integrity
+          if ((itemA.discount && itemA.discountApplied) || 
+              (itemB.discount && itemB.discountApplied)) {
+            continue;
+          }
+          
           // Create new groups with the swap
           const newGroups = groups.map(g => ({ ...g, items: [...g.items], total: g.total }));
-          const itemA = newGroups[underIdx].items[m];
-          const itemB = newGroups[overIdx].items[n];
           
           // Only swap if it helps
           const underNewTotal = newGroups[underIdx].total - itemA.total + itemB.total;

@@ -4,6 +4,12 @@ export interface ProductInfo {
   productName: string;
   price: number;
   confidence: number;
+  discount?: {
+    type: "bulk_price" | "buy_x_get_y";
+    quantity: number;
+    value: number;
+    display: string;
+  };
 }
 
 export interface ProductSuggestion {
@@ -120,8 +126,69 @@ export const getPriceSuggestions = (productName: string): number[] => {
   return [1.00, 1.25, 1.50, 1.75, 2.00, 2.25, 2.50, 2.75, 3.00, 3.25, 3.50, 3.75, 4.00, 4.25, 4.50, 4.75, 5.00, 5.25, 5.50, 5.75, 6.00, 6.25, 6.50, 6.75, 7.00, 7.25, 7.50, 7.75, 8.00, 8.25, 8.50, 8.75, 9.00, 9.25, 9.50, 9.75, 10.00, 11.25];
 };
 
+// Detect discount patterns from OCR text
+const detectDiscount = (text: string): { type: "bulk_price" | "buy_x_get_y", quantity: number, value: number, display: string } | null => {
+  const discountPatterns = [
+    // Type 1: bulk_price - "3 for €10", "2 for 5.99", etc.
+    /(\d+)\s+for\s+€?\s*(\d+(?:[.,]\d{2})?)/gi,
+    // Type 2: buy_x_get_y - "3 for 2", "2 for 1", etc.
+    /(\d+)\s+for\s+(\d+)(?!\d*[.,]\d)/gi, // Negative lookahead to avoid matching prices
+  ];
+
+  // Unit price indicators that should NOT be treated as discounts
+  const unitPriceIndicators = [
+    /each/i,
+    /per\s*unit/i,
+    /per\s*piece/i,
+    /per\s*item/i,
+    /unit\s*price/i,
+    /individual\s*price/i
+  ];
+
+  for (const pattern of discountPatterns) {
+    const matches = Array.from(text.matchAll(pattern));
+    for (const match of matches) {
+      const quantity = parseInt(match[1], 10);
+      const value = parseFloat(match[2].replace(',', '.'));
+      
+      // Check if this is a unit price indicator (not a discount)
+      const isUnitPrice = unitPriceIndicators.some(indicator => 
+        indicator.test(text) || 
+        text.toLowerCase().includes('each') ||
+        text.toLowerCase().includes('per unit')
+      );
+      
+      if (isUnitPrice) {
+        console.log('Skipping unit price indicator:', match[0]);
+        continue;
+      }
+      
+      // Determine discount type
+      if (match[0].includes('€') || match[2].includes('.') || match[2].includes(',')) {
+        // Type 1: bulk_price
+        return {
+          type: "bulk_price",
+          quantity,
+          value,
+          display: `(${quantity} for €${value.toFixed(2)})`
+        };
+      } else if (quantity > value) {
+        // Type 2: buy_x_get_y (only if getting more than paying for)
+        return {
+          type: "buy_x_get_y",
+          quantity,
+          value,
+          display: `(${quantity} for ${value})`
+        };
+      }
+    }
+  }
+  
+  return null;
+};
+
 // Enhanced parsing with multiple strategies
-const parseProductInfo = (text: string): { productName: string; price: number } => {
+const parseProductInfo = (text: string): { productName: string; price: number; discount?: { type: "bulk_price" | "buy_x_get_y", quantity: number, value: number, display: string } } => {
   console.log("=== Starting OCR Text Parsing ===");
   console.log("Original text:", text);
   
@@ -130,6 +197,12 @@ const parseProductInfo = (text: string): { productName: string; price: number } 
   
   const lines = cleanedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
   console.log("Lines after splitting:", lines);
+
+  // Detect discount information
+  const discount = detectDiscount(text);
+  if (discount) {
+    console.log("Discount detected:", discount);
+  }
 
   // --- Debug: print all lines for NOW price matching ---
   lines.forEach((line, idx) => {
@@ -348,9 +421,16 @@ const parseProductInfo = (text: string): { productName: string; price: number } 
   console.log("=== Final Result ===");
   console.log("Product Name:", productName);
   console.log("Price:", price);
+  if (discount) {
+    console.log("Discount:", discount);
+  }
   console.log("===================");
   
-  return { productName, price };
+  const result: { productName: string; price: number; discount?: { type: "bulk_price" | "buy_x_get_y", quantity: number, value: number, display: string } } = { productName, price };
+  if (discount) {
+    result.discount = discount;
+  }
+  return result;
 };
 
 // Text preprocessing
@@ -400,11 +480,14 @@ export const processImageForManualEntry = async (imageData: string): Promise<Pro
         }
       }
       
-      return {
+      const productInfo = {
         productName: result.productName || "",
         price: result.price || 0,
-        confidence: result.confidence || 0.5
+        confidence: result.confidence || 0.5,
+        discount: result.discount
       };
+      
+      return productInfo;
     } else {
       console.log("No information extracted from image");
       return {

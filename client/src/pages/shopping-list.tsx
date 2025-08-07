@@ -9,8 +9,9 @@ import { ShoppingItemComponent } from "@/components/shopping-item";
 import { GroupContainer } from "@/components/group-container";
 import { QuantityInput } from "@/components/quantity-input";
 import { PhotoCapture } from "@/components/photo-capture";
-import { ArrowLeft, Plus, Edit2, Check, X, Camera } from "lucide-react";
+import { ArrowLeft, Plus, Edit2, Check, X, Camera, Tag } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { cn, canApplyDiscount, toggleDiscount, calculateItemTotal } from "@/lib/utils";
 
 export default function ShoppingListPage() {
   const [, params] = useRoute("/list/:id");
@@ -70,12 +71,27 @@ export default function ShoppingListPage() {
       return;
     }
 
+    // Apply discount automatically if quantity matches discount requirement
+    const discountApplied = newItem.discount ? canApplyDiscount({ 
+      ...newItem, 
+      discountApplied: false 
+    } as ShoppingItem) : false;
+    
     const item: ShoppingItem = {
       id: `item-${Date.now()}`,
       name: newItem.name.trim(),
       price: Number(newItem.price),
       quantity: newItem.quantity,
-      total: Number((newItem.price * newItem.quantity).toFixed(2))
+      total: newItem.discount && discountApplied ? 
+        calculateItemTotal({ 
+          ...newItem, 
+          discountApplied: true,
+          id: `temp-${Date.now()}`,
+          total: 0
+        } as ShoppingItem) :
+        Number((newItem.price * newItem.quantity).toFixed(2)),
+      discount: newItem.discount,
+      discountApplied
     };
 
     const updatedList = {
@@ -105,6 +121,46 @@ export default function ShoppingListPage() {
           .reduce((sum, item) => sum + item.total, 0)
           .toFixed(2))
       }))
+    };
+
+    updateList(updatedList);
+  };
+
+  const handleToggleDiscount = (itemId: string) => {
+    if (!currentList) return;
+
+    const updatedItems = currentList.items.map(item => {
+      if (item.id === itemId) {
+        const updatedItem = toggleDiscount(item);
+        return updatedItem;
+      }
+      return item;
+    });
+
+    // Also update items in groups
+    const updatedGroups = currentList.groups?.map(group => ({
+      ...group,
+      items: group.items.map(item => {
+        if (item.id === itemId) {
+          const updatedItem = toggleDiscount(item);
+          return updatedItem;
+        }
+        return item;
+      }),
+      total: Number(group.items.map(item => {
+        if (item.id === itemId) {
+          const updatedItem = toggleDiscount(item);
+          return updatedItem;
+        }
+        return item;
+      }).reduce((sum, item) => sum + item.total, 0).toFixed(2))
+    }));
+
+    const updatedList = {
+      ...currentList,
+      items: updatedItems,
+      groups: updatedGroups,
+      total: Number(updatedItems.reduce((sum, item) => sum + item.total, 0).toFixed(2))
     };
 
     updateList(updatedList);
@@ -185,12 +241,46 @@ export default function ShoppingListPage() {
 
     const updatedItems = currentList.items.map(item => {
       if (item.id === itemId) {
-        const newTotal = Number((editForm.price * editForm.quantity).toFixed(2));
-        return {
+        // Create updated item with new values
+        const updatedItem: ShoppingItem = {
           ...item,
           name: editForm.name,
           price: editForm.price,
-          quantity: editForm.quantity,
+          quantity: editForm.quantity
+        };
+        
+        // Check if discount should be automatically applied based on new quantity
+        let discountApplied = item.discountApplied;
+        if (item.discount) {
+          const shouldApplyDiscount = canApplyDiscount(updatedItem);
+          discountApplied = shouldApplyDiscount;
+          
+          // Show toast notification if discount status changed
+          if (shouldApplyDiscount && !item.discountApplied) {
+            toast({
+              title: "Discount Applied!",
+              description: `Quantity ${editForm.quantity} meets the discount criteria.`,
+              variant: "default"
+            });
+          } else if (!shouldApplyDiscount && item.discountApplied) {
+            toast({
+              title: "Discount Removed",
+              description: `Quantity ${editForm.quantity} no longer meets the discount criteria.`,
+              variant: "default"
+            });
+          }
+        }
+        
+        // Apply the discount status and calculate total
+        const finalItem = {
+          ...updatedItem,
+          discountApplied
+        };
+        
+        const newTotal = calculateItemTotal(finalItem);
+        
+        return {
+          ...finalItem,
           total: newTotal
         };
       }
@@ -202,11 +292,30 @@ export default function ShoppingListPage() {
       ...group,
       items: group.items.map(item => {
         if (item.id === itemId) {
-          const newTotal = Number((editForm.price * editForm.quantity).toFixed(2));
-          return {
+          // Create updated item with new values
+          const updatedItem: ShoppingItem = {
             ...item,
             price: editForm.price,
-            quantity: editForm.quantity,
+            quantity: editForm.quantity
+          };
+          
+          // Check if discount should be automatically applied based on new quantity
+          let discountApplied = item.discountApplied;
+          if (item.discount) {
+            const shouldApplyDiscount = canApplyDiscount(updatedItem);
+            discountApplied = shouldApplyDiscount;
+          }
+          
+          // Apply the discount status and calculate total
+          const finalItem = {
+            ...updatedItem,
+            discountApplied
+          };
+          
+          const newTotal = calculateItemTotal(finalItem);
+          
+          return {
+            ...finalItem,
             total: newTotal
           };
         }
@@ -214,7 +323,27 @@ export default function ShoppingListPage() {
       }),
       total: Number(group.items.map(item => {
         if (item.id === itemId) {
-          return Number((editForm.price * editForm.quantity).toFixed(2));
+          // Create updated item with new values
+          const updatedItem: ShoppingItem = {
+            ...item,
+            price: editForm.price,
+            quantity: editForm.quantity
+          };
+          
+          // Check if discount should be automatically applied based on new quantity
+          let discountApplied = item.discountApplied;
+          if (item.discount) {
+            const shouldApplyDiscount = canApplyDiscount(updatedItem);
+            discountApplied = shouldApplyDiscount;
+          }
+          
+          // Apply the discount status and calculate total
+          const finalItem = {
+            ...updatedItem,
+            discountApplied
+          };
+          
+          return calculateItemTotal(finalItem);
         }
         return item.total;
       }).reduce((sum, total) => sum + total, 0).toFixed(2))
@@ -283,16 +412,21 @@ export default function ShoppingListPage() {
     setDragOverGroup(null);
   };
 
-  const handlePhotoExtractData = (productName: string, price: number) => {
+  const handlePhotoExtractData = (productName: string, price: number, discount?: { type: "bulk_price" | "buy_x_get_y"; quantity: number; value: number; display: string }) => {
     setOcrIsProcessing(false);
     setOcrLoadingText(null);
     // Clear global window variables
     (window as any).__ocrLoadingText = null;
     (window as any).__ocrIsProcessing = false;
+    
+    // Add discount information to product name if detected
+    const displayName = discount ? `${productName.trim()} ${discount.display}` : productName.trim();
+    
     setNewItem({
-      name: productName.trim() || "", // If no product name found, keep it empty
+      name: displayName || "", // If no product name found, keep it empty
       price: price,
-      quantity: 1
+      quantity: discount ? discount.quantity : 1, // Set quantity to discount quantity if available
+      discount: discount
     });
     // Removed toast notification to prevent blocking dialog
   };
@@ -571,10 +705,32 @@ export default function ShoppingListPage() {
                         <div className="flex items-center space-x-3 mt-1">
                           <span className="text-sm text-gray-600">€{item.price.toFixed(2)}</span>
                           <span className="text-sm text-gray-600">Qty: {item.quantity}</span>
-                          <span className="text-sm font-medium text-secondary">€{item.total.toFixed(2)}</span>
+                          <span className={cn(
+                            "text-sm font-medium",
+                            item.discountApplied ? "text-green-600" : "text-secondary"
+                          )}>
+                            €{item.total.toFixed(2)}
+                            {item.discountApplied && <span className="ml-1 text-xs">(discounted)</span>}
+                          </span>
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
+                        {item.discount && canApplyDiscount(item) && (
+                          <Button
+                            variant={item.discountApplied ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handleToggleDiscount(item.id)}
+                            className={cn(
+                              "p-1 text-xs",
+                              item.discountApplied 
+                                ? "bg-green-600 hover:bg-green-700 text-white" 
+                                : "text-green-600 border-green-600 hover:bg-green-50"
+                            )}
+                            title={`Apply discount: ${item.discount.display}`}
+                          >
+                            <Tag className="h-3 w-3" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"

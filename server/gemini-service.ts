@@ -8,6 +8,12 @@ export interface GeminiExtractionResult {
   confidence: number;
   error?: string;
   rawResponse?: any;
+  discount?: {
+    type: "bulk_price" | "buy_x_get_y";
+    quantity: number;
+    value: number;
+    display: string;
+  };
 }
 
 export class GeminiService {
@@ -39,22 +45,47 @@ export class GeminiService {
         contents: [{
           parts: [
             {
-              text: `Analyze this price tag image and extract the product name and price. 
+              text: `Analyze this price tag image and extract the product name, price, and any multi-purchase discounts. 
               
               Requirements:
               - Extract the main product name (clean, without store names, barcodes, or promotional text)
               - Extract the current price in euros (€)
               - If there are multiple prices, prefer the "NOW" or "ONLY" price
               - Handle cents format (e.g., "40c" = €0.40)
+              - Look for multi-purchase discount offers like:
+                * "3 for €10", "2 for €5.99" (bulk pricing)
+                * "3 for 2", "2 for 1" (buy X get Y offers)
+              - Do NOT treat unit price indicators as discounts:
+                * "(79.5c each)" - this is just showing per-unit cost
+                * "(€1.20 per unit)" - this is not a discount
+                * "2 for €3.18 (€1.59 each)" - only the "2 for €3.18" part is a discount
               - Return only the essential product information
               
               Format your response as JSON:
               {
                 "productName": "Clean product name",
                 "price": 1.25,
-                "confidence": 0.9
+                "confidence": 0.9,
+                "discount": {
+                  "type": "bulk_price",
+                  "quantity": 3,
+                  "value": 10.0,
+                  "display": "(3 for €10.00)"
+                }
               }
               
+              Discount types and format examples:
+              - "bulk_price" for "3 for €10" → {"type": "bulk_price", "quantity": 3, "value": 10.0, "display": "(3 for €10.00)"}
+              - "buy_x_get_y" for "3 for 2" → {"type": "buy_x_get_y", "quantity": 3, "value": 2, "display": "(3 for 2)"}
+              
+              NOT discounts (do not include):
+              - "(79.5c each)" - unit price indicator
+              - "(€1.20 per unit)" - unit price indicator
+              - "2 for €3.18 (€1.59 each)" - only extract "2 for €3.18" as discount
+              
+              IMPORTANT: Always include brackets () around the display text.
+              
+              Only include the discount field if a multi-purchase offer is clearly visible.
               If you cannot extract the information clearly, set confidence to 0.3 or lower.`
             },
             {
@@ -126,7 +157,8 @@ export class GeminiService {
         price: parseFloat(parsedData.price.toFixed(2)),
         inputTokens,
         outputTokens,
-        success: true
+        success: true,
+        discount: parsedData.discount?.display
       };
       this.loggingService.logAPICall(logData);
       
@@ -142,16 +174,34 @@ export class GeminiService {
       console.log('✅ Gemini extraction successful:', {
         productName: parsedData.productName,
         price: parsedData.price,
-        confidence: parsedData.confidence || 0.8
+        confidence: parsedData.confidence || 0.8,
+        discount: parsedData.discount
       });
 
-      return {
+      const result_response: GeminiExtractionResult = {
         success: true,
         productName: parsedData.productName.trim(),
         price: parseFloat(parsedData.price.toFixed(2)),
         confidence: Math.min(1.0, Math.max(0.0, parsedData.confidence || 0.8)),
         rawResponse: result
       };
+
+      // Add discount information if present
+      if (parsedData.discount && 
+          parsedData.discount.type && 
+          parsedData.discount.quantity && 
+          parsedData.discount.value &&
+          (parsedData.discount.type === 'bulk_price' || parsedData.discount.type === 'buy_x_get_y')) {
+        result_response.discount = {
+          type: parsedData.discount.type,
+          quantity: parsedData.discount.quantity,
+          value: parsedData.discount.value,
+          display: parsedData.discount.display || `(${parsedData.discount.quantity} for ${parsedData.discount.type === 'bulk_price' ? '€' + parsedData.discount.value.toFixed(2) : parsedData.discount.value})`
+        };
+        console.log('✅ Discount detected by Gemini:', result_response.discount);
+      }
+
+      return result_response;
 
     } catch (error) {
       const elapsedTime = (Date.now() - startTime) / 1000;
@@ -168,6 +218,7 @@ export class GeminiService {
         outputTokens: 0,
         success: false,
         error: errorMessage
+        // No discount field for failed extractions
       };
       this.loggingService.logAPICall(logData);
       

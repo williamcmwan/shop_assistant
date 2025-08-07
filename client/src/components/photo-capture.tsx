@@ -7,7 +7,7 @@ import { processImageForManualEntry, getProductSuggestions, getPriceSuggestions 
 import { ClientImageUtils } from "@/lib/image-utils";
 
 interface PhotoCaptureProps {
-  onExtractData: (productName: string, price: number) => void;
+  onExtractData: (productName: string, price: number, discount?: { type: "bulk_price" | "buy_x_get_y"; quantity: number; value: number; display: string }) => void;
   onClose: () => void;
 }
 
@@ -95,7 +95,7 @@ export function PhotoCapture({ onExtractData, onClose }: PhotoCaptureProps) {
           // Clear global window variables on success
           (window as any).__ocrLoadingText = null;
           (window as any).__ocrIsProcessing = false;
-          onExtractData(productInfo.productName, productInfo.price);
+          onExtractData(productInfo.productName, productInfo.price, productInfo.discount);
           
         } catch (error) {
           if (timeoutRef.current) clearTimeout(timeoutRef.current);
