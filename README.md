@@ -36,16 +36,40 @@ npm run dev
 
 ### Production Deployment
 ```bash
-# Run the universal deployment script
-./deploy-universal.sh
+# Run the deployment script
+./scripts/deploy.sh
 
 # The script will:
-# 1. Check if dependencies need updating (smart cleanup)
-# 2. Install dependencies only if needed
-# 3. Build the client
-# 4. Copy build files to server/public
-# 5. Create production startup scripts
-# 6. Stop any existing server
+# 1. Clean and install dependencies
+# 2. Build the client
+# 3. Copy build files to server/public
+# 4. Stop any existing server
+```
+
+### Managing the Application
+```bash
+# Start the server (foreground)
+./scripts/app.sh start
+
+# Start the server (background with logging)
+./scripts/app.sh start-bg
+
+# Stop the server
+./scripts/app.sh stop
+
+# Restart the server (foreground)
+./scripts/app.sh restart
+
+# Restart the server (background)
+./scripts/app.sh restart-bg
+
+# Check server status
+./scripts/app.sh status
+
+# View logs (app, error, or all)
+./scripts/app.sh logs
+./scripts/app.sh logs error
+./scripts/app.sh logs all
 ```
 
 ## 🏗️ Architecture
@@ -289,12 +313,57 @@ shop-assistant/
 ├── client/              # React frontend
 ├── server/              # Express backend
 ├── shared/              # Shared schemas
-├── deploy-universal.sh  # Universal deployment script
-├── start-prod.sh        # Production startup script
-├── restart.sh           # Server restart script
+├── scripts/             # Deployment and management scripts
+│   ├── deploy.sh        # Deployment script
+│   └── app.sh           # Application management (start/stop/restart/logs)
+├── logs/                # Application logs (created at runtime)
+│   ├── app.log          # Application output logs
+│   ├── error.log        # Error logs
+│   └── app.pid          # Process ID file for background mode
+├── docs/                # Documentation files
+│   ├── DEPLOYMENT_GUIDE.md
+│   ├── PRD.md
+│   └── ...              # Other documentation
 ├── package.json         # Dependencies
 └── README.md           # This file
 ```
+
+## 🏗️ Technical Architecture
+
+### System Overview
+The application follows a full-stack architecture with clear separation between client and server components:
+
+- **Frontend**: React with TypeScript, using Vite as the build tool
+- **Backend**: Express.js server with TypeScript
+- **OCR Service**: OCR Space API integration for price tag scanning
+- **UI Framework**: shadcn/ui components built on Radix UI primitives
+- **Styling**: Tailwind CSS with CSS variables for theming
+- **State Management**: TanStack Query for server state, local storage for persistence
+
+### Data Models
+The application uses Zod schemas for type validation:
+- **ShoppingItem**: Individual items with name, price, quantity, and total
+- **ShoppingGroup**: Collections of items with target amounts for smart grouping  
+- **ShoppingList**: Main container with items, groups, and metadata
+
+### Smart Grouping Algorithm
+- **Bin Packing**: First Fit Decreasing algorithm for optimal item distribution
+- **Target-Based**: Groups items based on configurable target amounts
+- **Flexible**: Allows 20% overflow for better item placement
+
+### Data Flow
+1. **List Creation**: Users create shopping lists with names and dates
+2. **Item Management**: Add/remove items with price and quantity tracking
+3. **OCR Scanning**: Take photos of price tags for automatic data extraction
+4. **Smart Grouping**: Algorithm distributes items across groups based on target amounts
+5. **Local Persistence**: All data stored in browser localStorage
+6. **Real-time Updates**: Automatic total calculations and group rebalancing
+
+### Configuration Files
+- **postcss.config.js**: PostCSS configuration for Tailwind CSS processing
+- **tailwind.config.ts**: Tailwind CSS theme and component configuration
+- **tsconfig.json**: TypeScript compilation settings with path aliases
+- **vite.config.ts**: Vite build configuration with React plugin and aliases
 
 ## 🤝 Contributing
 
