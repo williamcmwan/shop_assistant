@@ -66,7 +66,7 @@ cd client && npm run build && cd ..
 # Copy client build files to server/public for production
 print_status "Copying client build files to server/public..."
 mkdir -p server/public
-cp -r client/dist/* server/public/
+cp -r dist/public/* server/public/
 
 # Stop existing server if running
 PID=$(lsof -ti:$PORT 2>/dev/null || true)
