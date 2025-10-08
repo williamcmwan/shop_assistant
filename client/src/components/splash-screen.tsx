@@ -110,14 +110,14 @@ export function SplashScreen({ onClose }: SplashScreenProps) {
       </button>
 
       {/* Logo and Title - integrated with background */}
-      <div className="relative text-center mb-12 z-10">
-        <div className="w-32 h-32 mx-auto mb-6 relative animate-bounce-slow">
+      <div className="relative text-center mb-6 sm:mb-10 z-10">
+        <div className="w-20 h-20 sm:w-28 sm:h-28 mx-auto mb-4 sm:mb-5 relative animate-bounce-slow">
           {/* PNG Logo with glass effect */}
-          <div className="w-full h-full bg-white/20 backdrop-blur-xl rounded-3xl flex items-center justify-center shadow-2xl border border-white/30 overflow-hidden">
+          <div className="w-full h-full bg-white/20 backdrop-blur-xl rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-2xl border border-white/30 overflow-hidden">
             <img
               src="/logo.png"
               alt="ShopAssist Logo"
-              className="w-[120px] h-[120px] object-contain"
+              className="w-[75px] h-[75px] sm:w-[105px] sm:h-[105px] object-contain"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.style.display = 'none';
@@ -130,7 +130,7 @@ export function SplashScreen({ onClose }: SplashScreenProps) {
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              className="w-16 h-16 text-white hidden"
+              className="w-12 h-12 sm:w-16 sm:h-16 text-white hidden"
               strokeWidth={1.5}
               style={{ display: 'none' }}
             >
@@ -143,22 +143,22 @@ export function SplashScreen({ onClose }: SplashScreenProps) {
             </svg>
           </div>
           {/* Glow effect */}
-          <div className="absolute inset-0 bg-white/20 rounded-3xl blur-2xl -z-10"></div>
+          <div className="absolute inset-0 bg-white/20 rounded-2xl sm:rounded-3xl blur-2xl -z-10"></div>
         </div>
-        <h1 className="text-6xl font-bold text-white mb-3 drop-shadow-2xl">ShopAssist</h1>
-        <p className="text-white/90 text-xl font-light">Smart Shopping Made Simple</p>
+        <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-2 sm:mb-3 drop-shadow-2xl">ShopAssist</h1>
+        <p className="text-white/90 text-base sm:text-lg md:text-xl font-light">Smart Shopping Made Simple</p>
       </div>
 
       {/* Features showcase */}
-      <div className="w-full max-w-2xl px-8 z-10">
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-white mb-3 drop-shadow-lg">
+      <div className="w-full max-w-2xl px-6 sm:px-8 z-10">
+        <div className="text-center mb-4 sm:mb-6">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 sm:mb-3 drop-shadow-lg">
             Powerful Features
           </h2>
-          <p className="text-white/80 text-lg">Everything you need for smart shopping</p>
+          <p className="text-white/80 text-base sm:text-lg">Everything you need for smart shopping</p>
         </div>
 
-        <div className="relative h-56 mb-8">
+        <div className="relative h-44 sm:h-52 mb-6 sm:mb-8">
           {features.map((feature, index) => (
             <div
               key={index}
@@ -172,18 +172,18 @@ export function SplashScreen({ onClose }: SplashScreenProps) {
             >
               <div className="flex flex-col items-center text-center">
                 {/* Animated icon with glass effect */}
-                <div className={`w-24 h-24 rounded-3xl bg-white/20 backdrop-blur-xl border border-white/30 flex items-center justify-center mb-6 shadow-2xl transform transition-transform duration-500 ${
+                <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl bg-white/20 backdrop-blur-xl border border-white/30 flex items-center justify-center mb-3 sm:mb-5 shadow-2xl transform transition-transform duration-500 ${
                   index === currentFeature ? 'scale-100 rotate-0' : 'scale-0 rotate-180'
                 }`}>
-                  <div className="text-white">
+                  <div className="text-white [&>svg]:w-8 [&>svg]:h-8 sm:[&>svg]:w-10 sm:[&>svg]:h-10">
                     {feature.iconComponent}
                   </div>
                 </div>
 
-                <h3 className="text-2xl font-bold text-white mb-4 drop-shadow-lg">
+                <h3 className="text-xl sm:text-2xl font-bold text-white mb-2 sm:mb-3 drop-shadow-lg">
                   {feature.title}
                 </h3>
-                <p className="text-white/90 text-lg leading-relaxed px-8 max-w-xl">
+                <p className="text-white/90 text-sm sm:text-base md:text-lg leading-relaxed px-4 sm:px-8 max-w-xl">
                   {feature.description}
                 </p>
               </div>
@@ -192,15 +192,15 @@ export function SplashScreen({ onClose }: SplashScreenProps) {
         </div>
 
         {/* Progress indicators with glass effect */}
-        <div className="flex justify-center gap-3 mb-10">
+        <div className="flex justify-center gap-2 sm:gap-3 mb-6 sm:mb-8">
           {features.map((_, index) => (
             <button
               key={index}
               onClick={() => setCurrentFeature(index)}
-              className={`h-2.5 rounded-full transition-all duration-300 ${
+              className={`h-2 sm:h-2.5 rounded-full transition-all duration-300 ${
                 index === currentFeature
-                  ? 'bg-white w-10 shadow-lg'
-                  : 'bg-white/30 w-2.5 hover:bg-white/50'
+                  ? 'bg-white w-8 sm:w-10 shadow-lg'
+                  : 'bg-white/30 w-2 sm:w-2.5 hover:bg-white/50'
               }`}
             />
           ))}
@@ -210,10 +210,10 @@ export function SplashScreen({ onClose }: SplashScreenProps) {
         <div className="flex justify-center">
           <Button
             onClick={handleClose}
-            className="bg-white/20 hover:bg-white/30 backdrop-blur-xl border border-white/30 text-white text-xl py-7 px-12 rounded-2xl shadow-2xl hover:shadow-white/20 transition-all duration-300 transform hover:scale-105 font-semibold"
+            className="bg-white/20 hover:bg-white/30 backdrop-blur-xl border border-white/30 text-white text-lg sm:text-xl py-5 px-10 sm:py-6 sm:px-12 rounded-xl sm:rounded-2xl shadow-2xl hover:shadow-white/20 transition-all duration-300 transform hover:scale-105 font-semibold"
           >
             Get Started
-            <ArrowRight className="ml-3 h-6 w-6" />
+            <ArrowRight className="ml-2 sm:ml-3 h-5 w-5 sm:h-6 sm:w-6" />
           </Button>
         </div>
       </div>
