@@ -18,6 +18,7 @@ export const shoppingItemSchema = z.object({
   splitIndex: z.number().optional(), // For tracking which part of split item (1-based)
   discount: discountSchema.optional(), // Multi-purchase discount information
   discountApplied: z.boolean().default(false), // Whether discount is currently applied
+  onHold: z.boolean().default(false), // Whether item is on hold (excluded from total)
 });
 
 export const shoppingGroupSchema = z.object({

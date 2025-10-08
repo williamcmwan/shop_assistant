@@ -9,7 +9,7 @@ import { ShoppingItemComponent } from "@/components/shopping-item";
 import { GroupContainer } from "@/components/group-container";
 import { QuantityInput } from "@/components/quantity-input";
 import { PhotoCapture } from "@/components/photo-capture";
-import { ArrowLeft, Plus, Edit2, Check, X, Camera, Tag } from "lucide-react";
+import { ArrowLeft, Plus, Edit2, Check, X, Camera, Tag, Pause, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn, canApplyDiscount, toggleDiscount, calculateItemTotal } from "@/lib/utils";
 
@@ -54,9 +54,11 @@ export default function ShoppingListPage() {
   }, [params?.id, setLocation, toast]);
 
   const updateList = (updatedList: ShoppingList) => {
-    const totalAmount = updatedList.items.reduce((sum, item) => sum + item.total, 0);
+    const totalAmount = updatedList.items
+      .filter(item => !item.onHold)
+      .reduce((sum, item) => sum + item.total, 0);
     updatedList.total = Number(totalAmount.toFixed(2));
-    
+
     setCurrentList(updatedList);
     storageService.updateList(updatedList);
   };
@@ -166,6 +168,39 @@ export default function ShoppingListPage() {
     updateList(updatedList);
   };
 
+  const handleToggleHold = (itemId: string) => {
+    if (!currentList) return;
+
+    const updatedItems = currentList.items.map(item => {
+      if (item.id === itemId) {
+        return { ...item, onHold: !item.onHold };
+      }
+      return item;
+    });
+
+    // Also update items in groups
+    const updatedGroups = currentList.groups?.map(group => ({
+      ...group,
+      items: group.items.map(item => {
+        if (item.id === itemId) {
+          return { ...item, onHold: !item.onHold };
+        }
+        return item;
+      }),
+      total: Number(group.items
+        .filter(item => !item.onHold || item.id !== itemId)
+        .reduce((sum, item) => sum + item.total, 0).toFixed(2))
+    }));
+
+    const updatedList = {
+      ...currentList,
+      items: updatedItems,
+      groups: updatedGroups
+    };
+
+    updateList(updatedList);
+  };
+
   const handleToggleSplitMode = () => {
     if (!currentList) return;
 
@@ -188,6 +223,17 @@ export default function ShoppingListPage() {
       });
       return;
     }
+    // Filter out items that are on hold
+    const itemsToSplit = currentList.items.filter(item => !item.onHold);
+
+    if (itemsToSplit.length === 0) {
+      toast({
+        title: "No items to split",
+        description: "All items are on hold. Unhold some items before splitting.",
+        variant: "destructive"
+      });
+      return;
+    }
     // Validate groupSpecs
     if (groupSpecs.length === 0 || groupSpecs.some(spec => spec.count < 1 || spec.targetAmount <= 0)) {
       toast({
@@ -199,7 +245,7 @@ export default function ShoppingListPage() {
     }
     // Sort groupSpecs by targetAmount descending for better bin-packing
     const sortedSpecs = [...groupSpecs].sort((a, b) => b.targetAmount - a.targetAmount);
-    const groups = BinPackingAlgorithm.optimizeMultiple(currentList.items, sortedSpecs);
+    const groups = BinPackingAlgorithm.optimizeMultiple(itemsToSplit, sortedSpecs);
     const updatedList = {
       ...currentList,
       groups,
@@ -698,19 +744,26 @@ export default function ShoppingListPage() {
                     </div>
                   </div>
                 ) : (
-                  <div key={item.id} className="bg-white border border-gray-200 rounded-lg p-3 mb-2 shadow-sm">
+                  <div key={item.id} className={cn(
+                    "bg-white border border-gray-200 rounded-lg p-3 mb-2 shadow-sm",
+                    item.onHold && "bg-gray-100 opacity-60"
+                  )}>
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <h4 className="font-medium text-gray-900">{item.name}</h4>
+                        <h4 className={cn(
+                          "font-medium",
+                          item.onHold ? "text-gray-500" : "text-gray-900"
+                        )}>{item.name}</h4>
                         <div className="flex items-center space-x-3 mt-1">
                           <span className="text-sm text-gray-600">€{item.price.toFixed(2)}</span>
                           <span className="text-sm text-gray-600">Qty: {item.quantity}</span>
                           <span className={cn(
                             "text-sm font-medium",
-                            item.discountApplied ? "text-green-600" : "text-secondary"
+                            item.onHold ? "text-gray-500" : item.discountApplied ? "text-green-600" : "text-secondary"
                           )}>
                             €{item.total.toFixed(2)}
-                            {item.discountApplied && <span className="ml-1 text-xs">(discounted)</span>}
+                            {item.discountApplied && !item.onHold && <span className="ml-1 text-xs">(discounted)</span>}
+                            {item.onHold && <span className="ml-1 text-xs">(on hold)</span>}
                           </span>
                         </div>
                       </div>
@@ -722,8 +775,8 @@ export default function ShoppingListPage() {
                             onClick={() => handleToggleDiscount(item.id)}
                             className={cn(
                               "p-1 text-xs",
-                              item.discountApplied 
-                                ? "bg-green-600 hover:bg-green-700 text-white" 
+                              item.discountApplied
+                                ? "bg-green-600 hover:bg-green-700 text-white"
                                 : "text-green-600 border-green-600 hover:bg-green-50"
                             )}
                             title={`Apply discount: ${item.discount.display}`}
@@ -738,6 +791,20 @@ export default function ShoppingListPage() {
                           className="text-primary hover:bg-blue-50 p-1"
                         >
                           <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleToggleHold(item.id)}
+                          className={cn(
+                            "p-1",
+                            item.onHold
+                              ? "text-orange-600 hover:bg-orange-50"
+                              : "text-orange-600 hover:bg-orange-50"
+                          )}
+                          title={item.onHold ? "Resume item" : "Hold item"}
+                        >
+                          {item.onHold ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
                         </Button>
                         <Button
                           variant="ghost"

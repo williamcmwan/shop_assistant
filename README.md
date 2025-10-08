@@ -1,13 +1,14 @@
-# Shop Assistant v1.0.1 🛒
+# Shop Assistant v1.0.2 🛒
 
 A modern shopping assistant application with Camera, OCR and AI price tag detection capabilities.
 
-**Latest Update**: Fixed info icon sizing and improved UI responsiveness.
+**Latest Update**: Added hold item feature to temporarily exclude items from totals and list splitting.
 
 ## ✨ Features
 
 - **📸 OCR Price Tag Scanning with Multi-Purchase Discounts** - Take photos of price tags and automatically extract product information including volume discounts (3 for €10, 3 for 2, etc.)
 - **📝 Shopping List Management** - Create and manage multiple shopping lists
+- **⏸️ Hold Item Feature** - Temporarily put items on hold to exclude them from totals and list splitting
 - **🎯 Product Suggestions** - Smart suggestions for product names and prices
 - **📱 Mobile-First Design** - Optimized for mobile devices
 - **⚡ Fast & Lightweight** - Clean, optimized codebase with minimal dependencies
@@ -137,9 +138,16 @@ client/src/
    - **Visual Indicators**: Green pricing shows active discounts
    - **Smart Grouping**: Discounted items stay together in groups
 
+### Hold Items
+5. **Hold/Resume Items**: Use the pause button to hold items temporarily
+   - **Exclude from Total**: Held items are excluded from the total calculation
+   - **Exclude from Splitting**: Held items won't be included when splitting lists into groups
+   - **Visual Indicators**: Held items show with gray background and "(on hold)" label
+   - **Easy Toggle**: Click the play button to resume held items
+
 ### Smart Grouping
-5. **Enable Split Mode**: Automatically group items by target spending amounts
-6. **Track Totals**: Monitor your spending with real-time calculations including discount savings
+6. **Enable Split Mode**: Automatically group items by target spending amounts
+7. **Track Totals**: Monitor your spending with real-time calculations including discount savings
 
 ## 🔧 Configuration
 
