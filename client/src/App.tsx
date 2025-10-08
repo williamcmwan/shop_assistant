@@ -40,8 +40,11 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        {showSplash && <SplashScreen onClose={handleSplashClose} />}
-        <Router />
+        {showSplash ? (
+          <SplashScreen onClose={handleSplashClose} />
+        ) : (
+          <Router />
+        )}
       </TooltipProvider>
     </QueryClientProvider>
   );

@@ -51,6 +51,22 @@ export function SplashScreen({ onClose }: SplashScreenProps) {
   const [fadeOut, setFadeOut] = useState(false);
 
   useEffect(() => {
+    // Prevent body scroll when splash screen is visible
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+    document.body.style.height = '100%';
+
+    return () => {
+      // Restore body scroll when component unmounts
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.height = '';
+    };
+  }, []);
+
+  useEffect(() => {
     const timer = setInterval(() => {
       setCurrentFeature((prev) => (prev + 1) % features.length);
     }, 3500);
@@ -76,9 +92,9 @@ export function SplashScreen({ onClose }: SplashScreenProps) {
   }
 
   return (
-    <div className={`fixed inset-0 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 z-50 flex flex-col items-center justify-center transition-opacity duration-400 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}>
+    <div className={`fixed inset-0 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 z-50 flex flex-col items-center justify-center transition-opacity duration-400 overflow-hidden ${fadeOut ? 'opacity-0' : 'opacity-100'}`} style={{ touchAction: 'none' }}>
       {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-10 w-64 h-64 bg-white/5 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute bottom-32 right-20 w-96 h-96 bg-white/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
         <div className="absolute top-1/2 left-1/3 w-48 h-48 bg-white/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>

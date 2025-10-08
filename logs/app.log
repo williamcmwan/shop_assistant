@@ -1,2 +1,56 @@
-11:07:44 PM [express] serving on port 3000
-11:07:50 PM [express] GET /api/health 200 in 2ms :: {"status":"ok","timestamp":"2025-08-16T22:07:50.1…
+11:10:13 PM [express] serving on port 3000
+🔧 Extraction service created with backend: gemini_fallback
+🚀 Starting extraction with backend: gemini_fallback
+✅ Extraction services initialized
+🤖 Using Gemini API with OCR fallback
+🔄 Using Gemini API for extraction...
+Gemini API response: {
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```json\n{\n  \"productName\": \"Chestnut Mushrooms\",\n  \"price\": 1.15,\n  \"confidence\": 0.9,\n  \"discount\": {\n    \"type\": \"bulk_price\",\n    \"quantity\": 2,\n    \"value\": 2.0,\n    \"display\": \"(2 for €2)\"\n  }\n}\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "avgLogprobs": -0.00539510483029245
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 856,
+    "candidatesTokenCount": 87,
+    "totalTokenCount": 943,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 598
+      },
+      {
+        "modality": "IMAGE",
+        "tokenCount": 258
+      }
+    ],
+    "candidatesTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 87
+      }
+    ]
+  },
+  "modelVersion": "gemini-2.0-flash-lite",
+  "responseId": "9AGhaKxgo_6qww_i1YaJBw"
+}
+📊 Logged API call: Gemini - SUCCESS - 1.620s
+✅ Gemini extraction successful: {
+  productName: 'Chestnut Mushrooms',
+  price: 1.15,
+  confidence: 0.9,
+  discount: { type: 'bulk_price', quantity: 2, value: 2, display: '(2 for €2)' }
+}
+✅ Discount detected by Gemini: { type: 'bulk_price', quantity: 2, value: 2, display: '(2 for €2)' }
+✅ Gemini extraction successful, no fallback needed
+⏱️ Extraction completed in 1625ms
+11:11:01 PM [express] POST /api/ocr 200 in 1627ms :: {"success":true,"productName":"Chestnut Mushroom…
