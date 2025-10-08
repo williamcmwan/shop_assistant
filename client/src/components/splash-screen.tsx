@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, X, Camera, Tag, Package, PauseCircle } from "lucide-react";
 
 interface SplashScreenProps {
   onClose: () => void;
@@ -10,42 +10,65 @@ interface Feature {
   title: string;
   description: string;
   icon: string;
+  iconComponent: React.ReactNode;
+  gradient: string;
 }
 
 const features: Feature[] = [
   {
     title: "Smart Photo Capture",
-    description: "Capture item name & price by taking photo on price tag",
-    icon: "📸"
+    description: "Scan price tags instantly with AI-powered OCR technology",
+    icon: "📸",
+    iconComponent: <Camera className="w-12 h-12" />,
+    gradient: "from-blue-400 to-blue-600"
   },
   {
     title: "Multi-Purchase Discounts",
-    description: "Support 3 for 2, 3 for 10€ etc discount offers",
-    icon: "🏷️"
+    description: "Automatically detect and apply volume discounts like '3 for €10'",
+    icon: "🏷️",
+    iconComponent: <Tag className="w-12 h-12" />,
+    gradient: "from-green-400 to-green-600"
   },
   {
     title: "Intelligent Grouping",
-    description: "Better optimization when splitting shopping lists",
-    icon: "📦"
+    description: "Smart bin-packing algorithm splits lists optimally",
+    icon: "📦",
+    iconComponent: <Package className="w-12 h-12" />,
+    gradient: "from-purple-400 to-purple-600"
+  },
+  {
+    title: "Hold Items",
+    description: "Put items on hold to exclude them from totals and splitting",
+    icon: "⏸️",
+    iconComponent: <PauseCircle className="w-12 h-12" />,
+    gradient: "from-orange-400 to-orange-600"
   }
 ];
 
 export function SplashScreen({ onClose }: SplashScreenProps) {
   const [currentFeature, setCurrentFeature] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
+  const [fadeOut, setFadeOut] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentFeature((prev) => (prev + 1) % features.length);
-    }, 3000);
+    }, 3500);
 
     return () => clearInterval(timer);
   }, []);
 
   const handleClose = () => {
     localStorage.setItem('splashScreenShown', 'true');
-    setIsVisible(false);
-    setTimeout(onClose, 300); // Wait for fade out animation
+    setFadeOut(true);
+    setTimeout(() => {
+      setIsVisible(false);
+      onClose();
+    }, 400);
+  };
+
+  const handleSkip = () => {
+    handleClose();
   };
 
   if (!isVisible) {
@@ -53,127 +76,130 @@ export function SplashScreen({ onClose }: SplashScreenProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 relative overflow-hidden">
-        {/* Logo */}
+    <div className={`fixed inset-0 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 z-50 flex flex-col items-center justify-center transition-opacity duration-400 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}>
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-20 left-10 w-64 h-64 bg-white/5 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-32 right-20 w-96 h-96 bg-white/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute top-1/2 left-1/3 w-48 h-48 bg-white/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+      </div>
+
+      {/* Skip button */}
+      <button
+        onClick={handleSkip}
+        className="absolute top-8 right-8 text-white/80 hover:text-white transition-colors duration-200 flex items-center gap-2 bg-white/10 hover:bg-white/20 px-5 py-2.5 rounded-full backdrop-blur-sm z-10"
+      >
+        <span className="text-sm font-medium">Skip</span>
+        <X className="w-4 h-4" />
+      </button>
+
+      {/* Logo and Title - integrated with background */}
+      <div className="relative text-center mb-12 z-10">
+        <div className="w-32 h-32 mx-auto mb-6 relative animate-bounce-slow">
+          {/* PNG Logo with glass effect */}
+          <div className="w-full h-full bg-white/20 backdrop-blur-xl rounded-3xl flex items-center justify-center shadow-2xl border border-white/30 overflow-hidden">
+            <img
+              src="/logo.png"
+              alt="ShopAssist Logo"
+              className="w-[120px] h-[120px] object-contain"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                const fallback = target.nextElementSibling as HTMLElement;
+                if (fallback) fallback.style.display = 'block';
+              }}
+            />
+            {/* Fallback SVG */}
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              className="w-16 h-16 text-white hidden"
+              strokeWidth={1.5}
+              style={{ display: 'none' }}
+            >
+              <path d="M3 8h18" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M4 8v8a2 2 0 002 2h12a2 2 0 002-2V8" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M6 12h12" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M6 15h12" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="7" cy="18" r="1.5" />
+              <circle cx="17" cy="18" r="1.5" />
+            </svg>
+          </div>
+          {/* Glow effect */}
+          <div className="absolute inset-0 bg-white/20 rounded-3xl blur-2xl -z-10"></div>
+        </div>
+        <h1 className="text-6xl font-bold text-white mb-3 drop-shadow-2xl">ShopAssist</h1>
+        <p className="text-white/90 text-xl font-light">Smart Shopping Made Simple</p>
+      </div>
+
+      {/* Features showcase */}
+      <div className="w-full max-w-2xl px-8 z-10">
         <div className="text-center mb-8">
-          <div className="w-20 h-20 mx-auto mb-4 relative">
-            {/* PNG Logo */}
-            <div className="w-full h-full bg-black rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
-              <img 
-                src="/logo.png" 
-                alt="ShopAssist Logo" 
-                className="w-[75px] h-[75px] object-contain"
-                onError={(e) => {
-                  // Fallback to SVG if PNG fails to load
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                  const fallback = target.nextElementSibling as HTMLElement;
-                  if (fallback) fallback.style.display = 'block';
-                }}
-              />
-              {/* Fallback SVG (hidden by default) */}
-              <svg 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                className="w-10 h-10 text-gray-300 hidden"
-                strokeWidth={1.5}
-                style={{ display: 'none' }}
-              >
-                {/* Handle */}
-                <path 
-                  d="M3 8h18" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                />
-                {/* Basket - rectangular with rounded corners */}
-                <path 
-                  d="M4 8v8a2 2 0 002 2h12a2 2 0 002-2V8" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                />
-                {/* Internal structure lines */}
-                <path 
-                  d="M6 12h12" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                />
-                <path 
-                  d="M6 15h12" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                />
-                {/* Left wheel */}
-                <circle cx="7" cy="18" r="1.5" />
-                <circle cx="7" cy="18" r="0.5" />
-                {/* Right wheel */}
-                <circle cx="17" cy="18" r="1.5" />
-                <circle cx="17" cy="18" r="0.5" />
-              </svg>
-            </div>
-            {/* Shadow */}
-            <div className="absolute -bottom-1 left-2 right-2 h-1.5 bg-black opacity-10 rounded-full blur-sm"></div>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">ShopAssist</h1>
-          <p className="text-gray-600">Smart Shopping Made Simple</p>
+          <h2 className="text-3xl font-bold text-white mb-3 drop-shadow-lg">
+            Powerful Features
+          </h2>
+          <p className="text-white/80 text-lg">Everything you need for smart shopping</p>
         </div>
 
-        {/* Features carousel */}
-        <div className="mb-8">
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">What's New</h2>
-            <p className="text-gray-600">Discover our latest features</p>
-          </div>
-          
-          <div className="relative h-32">
-            {features.map((feature, index) => (
-              <div
-                key={index}
-                className={`absolute inset-0 transition-all duration-500 ${
-                  index === currentFeature 
-                    ? 'opacity-100 translate-x-0' 
-                    : index < currentFeature 
-                      ? 'opacity-0 -translate-x-full' 
-                      : 'opacity-0 translate-x-full'
-                }`}
-              >
-                <div className="text-center">
-                  <div className="text-4xl mb-3">{feature.icon}</div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                    {feature.title}
-                  </h3>
-                  <p className="text-gray-600 text-sm leading-relaxed">
-                    {feature.description}
-                  </p>
+        <div className="relative h-56 mb-8">
+          {features.map((feature, index) => (
+            <div
+              key={index}
+              className={`absolute inset-0 transition-all duration-700 ease-in-out ${
+                index === currentFeature
+                  ? 'opacity-100 translate-x-0 scale-100'
+                  : index < currentFeature
+                    ? 'opacity-0 -translate-x-full scale-95'
+                    : 'opacity-0 translate-x-full scale-95'
+              }`}
+            >
+              <div className="flex flex-col items-center text-center">
+                {/* Animated icon with glass effect */}
+                <div className={`w-24 h-24 rounded-3xl bg-white/20 backdrop-blur-xl border border-white/30 flex items-center justify-center mb-6 shadow-2xl transform transition-transform duration-500 ${
+                  index === currentFeature ? 'scale-100 rotate-0' : 'scale-0 rotate-180'
+                }`}>
+                  <div className="text-white">
+                    {feature.iconComponent}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
 
-          {/* Feature indicators */}
-          <div className="flex justify-center space-x-2 mt-4">
-            {features.map((_, index) => (
-              <div
-                key={index}
-                className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                  index === currentFeature 
-                    ? 'bg-blue-500 w-6' 
-                    : 'bg-gray-300'
-                }`}
-              />
-            ))}
-          </div>
+                <h3 className="text-2xl font-bold text-white mb-4 drop-shadow-lg">
+                  {feature.title}
+                </h3>
+                <p className="text-white/90 text-lg leading-relaxed px-8 max-w-xl">
+                  {feature.description}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
 
-        {/* Action button */}
-        <Button
-          onClick={handleClose}
-          className="w-full bg-blue-500 hover:bg-blue-600 text-white"
-        >
-          Get Started
-          <ArrowRight className="ml-2 h-4 w-4" />
-        </Button>
+        {/* Progress indicators with glass effect */}
+        <div className="flex justify-center gap-3 mb-10">
+          {features.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentFeature(index)}
+              className={`h-2.5 rounded-full transition-all duration-300 ${
+                index === currentFeature
+                  ? 'bg-white w-10 shadow-lg'
+                  : 'bg-white/30 w-2.5 hover:bg-white/50'
+              }`}
+            />
+          ))}
+        </div>
+
+        {/* Action button with glass effect */}
+        <div className="flex justify-center">
+          <Button
+            onClick={handleClose}
+            className="bg-white/20 hover:bg-white/30 backdrop-blur-xl border border-white/30 text-white text-xl py-7 px-12 rounded-2xl shadow-2xl hover:shadow-white/20 transition-all duration-300 transform hover:scale-105 font-semibold"
+          >
+            Get Started
+            <ArrowRight className="ml-3 h-6 w-6" />
+          </Button>
+        </div>
       </div>
     </div>
   );
