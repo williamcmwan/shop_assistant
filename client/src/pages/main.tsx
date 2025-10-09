@@ -131,11 +131,11 @@ export default function MainPage() {
               className="mr-3 p-0 hover:bg-gray-100 rounded-lg"
               title="Show app info"
             >
-              <div className="w-12 h-12 bg-gradient-to-br from-gray-400 to-gray-600 rounded-lg flex items-center justify-center">
+              <div className="w-12 h-12 flex items-center justify-center">
                 <img
-                  src="/logo.png"
+                  src="/logo_new.png"
                   alt="ShopAssist Logo"
-                  className="w-10 h-10 object-contain"
+                  className="w-12 h-12 object-contain"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.style.display = 'none';
@@ -232,7 +232,7 @@ export default function MainPage() {
                       <h3 className="font-medium text-gray-900">{list.name}</h3>
                       <div className="flex items-center space-x-4 mt-1">
                         <p className="text-sm text-gray-600">{new Date(list.date).toLocaleDateString()}</p>
-                        <p className="text-sm font-medium text-secondary">{currencySymbol}{list.total.toFixed(2)}</p>
+                        <p className="text-sm font-medium text-primary">{currencySymbol}{list.total.toFixed(2)}</p>
                         <p className="text-xs text-gray-500">{list.items.length} items</p>
                       </div>
                     </div>
@@ -251,7 +251,7 @@ export default function MainPage() {
                           <Button 
                             variant="ghost"
                             size="sm"
-                            className="text-destructive hover:bg-red-50 p-2"
+                            className="text-primary hover:bg-blue-50 p-2"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

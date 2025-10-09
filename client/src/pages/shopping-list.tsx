@@ -10,7 +10,7 @@ import { ShoppingItemComponent } from "@/components/shopping-item";
 import { GroupContainer } from "@/components/group-container";
 import { QuantityInput } from "@/components/quantity-input";
 import { PhotoCapture } from "@/components/photo-capture";
-import { ArrowLeft, Plus, Edit2, Check, X, Camera, Tag, Pause, Play } from "lucide-react";
+import { ArrowLeft, Plus, Edit2, Check, X, Camera, Tag, Pause, Play, Trash2, Minus, AtSign, Calculator, Percent } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn, canApplyDiscount, toggleDiscount, calculateItemTotal } from "@/lib/utils";
 
@@ -349,6 +349,18 @@ export default function ShoppingListPage() {
   const handleSaveEdit = (itemId: string) => {
     if (!currentList) return;
 
+    // Check if quantity is less than 1, if so, remove the item
+    if (editForm.quantity < 1) {
+      handleRemoveItem(itemId);
+      setEditingItem(null);
+      toast({
+        title: "Item removed",
+        description: "Item was removed because quantity was set below 1.",
+        variant: "default"
+      });
+      return;
+    }
+
     const updatedItems = currentList.items.map(item => {
       if (item.id === itemId) {
         // Create updated item with new values
@@ -479,6 +491,135 @@ export default function ShoppingListPage() {
 
   const handleCancelEdit = () => {
     setEditingItem(null);
+  };
+
+  const handleQuantityChange = (itemId: string, newQuantity: number) => {
+    if (!currentList) return;
+
+    // If quantity is 0 or less, remove the item
+    if (newQuantity <= 0) {
+      handleRemoveItem(itemId);
+      toast({
+        title: "Item removed",
+        description: "Item was removed because quantity reached 0.",
+        variant: "default"
+      });
+      return;
+    }
+
+    const updatedItems = currentList.items.map(item => {
+      if (item.id === itemId) {
+        // Create updated item with new quantity
+        const updatedItem: ShoppingItem = {
+          ...item,
+          quantity: newQuantity
+        };
+
+        // Check if discount should be automatically applied based on new quantity
+        let discountApplied = item.discountApplied;
+        if (item.discount) {
+          const shouldApplyDiscount = canApplyDiscount(updatedItem);
+          discountApplied = shouldApplyDiscount;
+
+          // Show toast notification if discount status changed
+          if (shouldApplyDiscount && !item.discountApplied) {
+            toast({
+              title: "Discount Applied!",
+              description: `Quantity ${newQuantity} meets the discount criteria.`,
+              variant: "default"
+            });
+          } else if (!shouldApplyDiscount && item.discountApplied) {
+            toast({
+              title: "Discount Removed",
+              description: `Quantity ${newQuantity} no longer meets the discount criteria.`,
+              variant: "default"
+            });
+          }
+        }
+
+        // Apply the discount status and calculate total
+        const finalItem = {
+          ...updatedItem,
+          discountApplied
+        };
+
+        const newTotal = calculateItemTotal(finalItem);
+
+        return {
+          ...finalItem,
+          total: newTotal
+        };
+      }
+      return item;
+    });
+
+    // Also update item in groups if it exists
+    const updatedGroups = currentList.groups?.map(group => ({
+      ...group,
+      items: group.items.map(item => {
+        if (item.id === itemId) {
+          // Create updated item with new quantity
+          const updatedItem: ShoppingItem = {
+            ...item,
+            quantity: newQuantity
+          };
+
+          // Check if discount should be automatically applied based on new quantity
+          let discountApplied = item.discountApplied;
+          if (item.discount) {
+            const shouldApplyDiscount = canApplyDiscount(updatedItem);
+            discountApplied = shouldApplyDiscount;
+          }
+
+          // Apply the discount status and calculate total
+          const finalItem = {
+            ...updatedItem,
+            discountApplied
+          };
+
+          const newTotal = calculateItemTotal(finalItem);
+
+          return {
+            ...finalItem,
+            total: newTotal
+          };
+        }
+        return item;
+      }),
+      total: Number(group.items.map(item => {
+        if (item.id === itemId) {
+          // Create updated item with new quantity
+          const updatedItem: ShoppingItem = {
+            ...item,
+            quantity: newQuantity
+          };
+
+          // Check if discount should be automatically applied based on new quantity
+          let discountApplied = item.discountApplied;
+          if (item.discount) {
+            const shouldApplyDiscount = canApplyDiscount(updatedItem);
+            discountApplied = shouldApplyDiscount;
+          }
+
+          // Apply the discount status and calculate total
+          const finalItem = {
+            ...updatedItem,
+            discountApplied
+          };
+
+          return calculateItemTotal(finalItem);
+        }
+        return item.total;
+      }).reduce((sum, total) => sum + total, 0).toFixed(2))
+    }));
+
+    const updatedList = {
+      ...currentList,
+      items: updatedItems,
+      groups: updatedGroups
+    };
+
+    updateList(updatedList);
   };
 
   const scrollToAddForm = () => {
@@ -633,14 +774,14 @@ export default function ShoppingListPage() {
             </div>
           </div>
           <div className="text-right">
-            <p className="text-lg font-bold text-secondary">{currencySymbol}{currentList.total.toFixed(2)}</p>
+            <p className="text-xl font-bold text-blue-600">{currencySymbol}{currentList.total.toFixed(2)}</p>
             <p className="text-xs text-gray-500">{currentList.items.length} items</p>
           </div>
         </div>
       </div>
 
       {/* Add Item Form */}
-      <div className="add-item-form bg-white border-b border-gray-200 p-4 w-full">
+      <div className="add-item-form bg-white p-4 w-full">
         <div className="space-y-3 w-full">
           {/* Item name field and camera - full width row */}
           <div className="flex gap-1 w-full items-stretch">
@@ -661,7 +802,7 @@ export default function ShoppingListPage() {
                 setNewItem({ name: "", price: 0, quantity: 1, discountApplied: false, onHold: false });
               }}
               variant="outline"
-              className="px-3 py-3 flex items-center justify-center w-12 shrink-0"
+              className="px-3 py-3 flex items-center justify-center w-12 shrink-0 hover:bg-blue-50 hover:border-blue-300 text-gray-600 hover:text-blue-600"
               title="Capture price tag with camera"
             >
               <Camera className="h-4 w-4" />
@@ -700,7 +841,7 @@ export default function ShoppingListPage() {
       {/* Items List / Groups */}
       <div className="flex-1 overflow-y-auto pb-24">
         {currentList.isSplitMode ? (
-          <div className="p-4 space-y-4 pb-8">
+          <div className="px-4 pt-0 pb-8 space-y-4">
             {currentList.groups?.map((group) => (
               <GroupContainer
                 key={group.id}
@@ -759,7 +900,7 @@ export default function ShoppingListPage() {
                             <span className="font-medium text-gray-900">
                               {item.name} ({actualIndex}/{item.quantity})
                             </span>
-                            <span className="text-secondary font-medium">{currencySymbol}{unitPrice.toFixed(2)}</span>
+                            <span className="text-blue-600 font-medium">{currencySymbol}{unitPrice.toFixed(2)}</span>
                           </div>
                         </div>
                       );
@@ -770,7 +911,7 @@ export default function ShoppingListPage() {
             )}
           </div>
         ) : (
-          <div className="p-4 pb-8">
+          <div className="px-4 pt-0 pb-8">
             {currentList.items.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <p>No items in this list yet</p>
@@ -814,7 +955,7 @@ export default function ShoppingListPage() {
                           <Button
                             size="sm"
                             onClick={() => handleSaveEdit(item.id)}
-                            className="bg-green-600 hover:bg-green-700 text-white px-2 py-2 min-w-[36px]"
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-2 min-w-[36px]"
                           >
                             <Check className="h-3 w-3" />
                           </Button>
@@ -835,74 +976,87 @@ export default function ShoppingListPage() {
                     "bg-white border border-gray-200 rounded-lg p-3 mb-2 shadow-sm",
                     item.onHold && "bg-gray-100 opacity-60"
                   )}>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h4 className={cn(
-                          "font-medium",
-                          item.onHold ? "text-gray-500" : "text-gray-900"
-                        )}>{item.name}</h4>
-                        <div className="flex items-center space-x-3 mt-1">
-                          <span className="text-sm text-gray-600">{currencySymbol}{item.price.toFixed(2)}</span>
-                          <span className="text-sm text-gray-600">Qty: {item.quantity}</span>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditItem(item)}
+                            className="text-blue-600 hover:bg-blue-50 p-1"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <h4 className={cn(
+                            "font-medium",
+                            item.onHold ? "text-gray-500" : "text-gray-900"
+                          )}>{item.name}</h4>
+                        </div>
+                        <div className="flex items-center space-x-4 mt-2">
                           <div className="flex items-center gap-1">
+                            <AtSign className="h-4 w-4 text-black" />
+                            <span className="text-base font-medium text-gray-700">{currencySymbol}{item.price.toFixed(2)}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Calculator className="h-4 w-4 text-black" />
                             <span className={cn(
-                              "text-sm font-medium",
-                              item.onHold ? "text-gray-500" : item.discountApplied ? "text-green-600" : "text-secondary"
+                              "text-lg font-semibold",
+                              item.onHold ? "text-gray-500" : item.discountApplied ? "text-blue-600" : "text-blue-600"
                             )}>
                               {currencySymbol}{item.total.toFixed(2)}
-                              {item.discountApplied && !item.onHold && <span className="ml-1 text-xs">(discounted)</span>}
-                              {item.onHold && <span className="ml-1 text-xs">(on hold)</span>}
                             </span>
-                            {item.discount && canApplyDiscount(item) && (
-                              <Button
-                                variant={item.discountApplied ? "default" : "outline"}
-                                size="sm"
-                                onClick={() => handleToggleDiscount(item.id)}
-                                className={cn(
-                                  "p-0.5 text-xs h-5 w-5",
-                                  item.discountApplied
-                                    ? "bg-green-600 hover:bg-green-700 text-white"
-                                    : "text-green-600 border-green-600 hover:bg-green-50"
-                                )}
-                                title={`Apply discount: ${item.discount.display}`}
-                              >
-                                <Tag className="h-2.5 w-2.5" />
-                              </Button>
+                            {item.discount && (
+                              <div className="ml-1" title={`Discount: ${item.discount.display}`}>
+                                <Tag className="h-4 w-4 text-blue-600" />
+                              </div>
                             )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleToggleHold(item.id)}
+                              className={cn(
+                                "p-1 ml-1",
+                                item.onHold
+                                  ? "text-red-600 hover:bg-red-50"
+                                  : "text-red-600 hover:bg-red-50"
+                              )}
+                              title={item.onHold ? "Resume item" : "Hold item"}
+                            >
+                              {item.onHold ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+                            </Button>
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditItem(item)}
-                          className="text-primary hover:bg-blue-50 p-1"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleToggleHold(item.id)}
-                          className={cn(
-                            "p-1",
-                            item.onHold
-                              ? "text-orange-600 hover:bg-orange-50"
-                              : "text-orange-600 hover:bg-orange-50"
-                          )}
-                          title={item.onHold ? "Resume item" : "Hold item"}
-                        >
-                          {item.onHold ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveItem(item.id)}
-                          className="text-destructive hover:bg-red-50 p-1"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
+                      <div className="flex items-center ml-2">
+                        <div className="flex items-center bg-gray-100 rounded-full">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                            className="w-8 h-8 rounded-full p-0 border-2 border-gray-300 bg-white hover:border-gray-500 hover:bg-gray-50"
+                            title="Decrease quantity (0 removes item)"
+                          >
+                            {item.quantity === 1 ? (
+                              <Trash2 className="h-4 w-4 text-black" />
+                            ) : (
+                              <Minus className="h-4 w-4 text-black" />
+                            )}
+                          </Button>
+                          <div className="bg-gray-100 px-2 py-1">
+                            <span className="text-sm font-medium text-black">
+                              {item.quantity}
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                            className="w-8 h-8 rounded-full p-0 border-2 border-gray-300 bg-white hover:border-gray-500 hover:bg-gray-50"
+                            title="Increase quantity"
+                          >
+                            <Plus className="h-4 w-4 text-black" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -914,11 +1068,11 @@ export default function ShoppingListPage() {
       </div>
 
       {/* Bottom Split Panel */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 max-w-md mx-auto">
+      <div className="fixed bottom-0 left-0 right-0 bg-white p-4 max-w-md mx-auto">
         {!currentList.isSplitMode ? (
           <Button
             onClick={() => setShowSplitPanel(true)}
-            className="w-full bg-accent text-white hover:bg-orange-600 py-3 text-base font-medium"
+            className="w-full bg-blue-600 text-white hover:bg-blue-700 py-3 text-base font-medium"
           >
             Split List
           </Button>
@@ -1021,7 +1175,7 @@ export default function ShoppingListPage() {
                 </Button>
                 <Button
                   onClick={handleRunBinPacking}
-                  className="flex-1 bg-accent text-white hover:bg-orange-600 py-3 text-base font-medium"
+                  className="flex-1 bg-blue-600 text-white hover:bg-blue-700 py-3 text-base font-medium"
                 >
                   Split Items
                 </Button>

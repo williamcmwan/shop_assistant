@@ -67,7 +67,7 @@ export function GroupContainer({
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-gray-900">Group {group.number}</h3>
         <div className="text-right">
-          <p className="text-lg font-bold text-secondary">€{group.total.toFixed(2)}</p>
+          <p className="text-lg font-bold text-blue-600">€{group.total.toFixed(2)}</p>
           {editingGroupTarget === group.id ? (
             <div className="flex items-center gap-1 mt-1">
               <span className="text-xs text-gray-600">Target:</span>
@@ -97,7 +97,7 @@ export function GroupContainer({
           ) : (
             <div className="flex items-center gap-1">
               <p className="text-xs text-gray-500">
-                Target: €{group.targetAmount.toFixed(2)} 
+                Target: <span className="text-blue-600">€{group.targetAmount.toFixed(2)}</span> 
                 {isOverTarget ? (
                   <span className="text-orange-600"> (+€{excess.toFixed(2)})</span>
                 ) : excess < 0 ? (
@@ -142,7 +142,7 @@ export function GroupContainer({
               <span className="font-medium text-gray-900">
                 {item.name} {item.originalQuantity && item.originalQuantity > 1 && item.splitIndex ? `(${item.splitIndex}/${item.originalQuantity})` : ''}
               </span>
-              <span className="text-secondary font-medium">€{item.total.toFixed(2)}</span>
+              <span className="text-blue-600 font-medium">€{item.total.toFixed(2)}</span>
             </div>
           </div>
         ))}

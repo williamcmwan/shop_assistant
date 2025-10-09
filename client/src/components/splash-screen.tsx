@@ -155,12 +155,12 @@ export function SplashScreen({ onClose }: SplashScreenProps) {
       {/* Logo and Title - integrated with background */}
       <div className="relative text-center mb-6 sm:mb-10 z-10">
         <div className="w-20 h-20 sm:w-28 sm:h-28 mx-auto mb-4 sm:mb-5 relative animate-bounce-slow">
-          {/* PNG Logo with glass effect */}
-          <div className="w-full h-full bg-white/20 backdrop-blur-xl rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-2xl border border-white/30 overflow-hidden">
+          {/* PNG Logo */}
+          <div className="w-full h-full flex items-center justify-center">
             <img
-              src="/logo.png"
+              src="/logo_new.png"
               alt="ShopAssist Logo"
-              className="w-[75px] h-[75px] sm:w-[105px] sm:h-[105px] object-contain"
+              className="w-20 h-20 sm:w-28 sm:h-28 object-contain"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.style.display = 'none';
@@ -185,8 +185,7 @@ export function SplashScreen({ onClose }: SplashScreenProps) {
               <circle cx="17" cy="18" r="1.5" />
             </svg>
           </div>
-          {/* Glow effect */}
-          <div className="absolute inset-0 bg-white/20 rounded-2xl sm:rounded-3xl blur-2xl -z-10"></div>
+
         </div>
         <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-2 sm:mb-3 drop-shadow-2xl">ShopAssist</h1>
         <p className="text-white/90 text-base sm:text-lg md:text-xl font-light">Smart Shopping Made Simple</p>
