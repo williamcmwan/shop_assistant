@@ -1185,16 +1185,7 @@ export default function ShoppingListPage() {
         </div>
       )}
 
-      {/* Floating Action Button */}
-      {currentList.isSplitMode && (
-        <Button
-          onClick={scrollToAddForm}
-          className="fixed bottom-24 right-6 w-14 h-14 bg-accent text-white rounded-full shadow-lg hover:bg-orange-600 hover:scale-110 transition-all duration-200"
-          style={{ zIndex: 20 }}
-        >
-          <Plus className="h-5 w-5" />
-        </Button>
-      )}
+
 
       {/* Photo Capture Modal */}
       {showPhotoCapture && (

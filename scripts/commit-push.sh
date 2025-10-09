@@ -9,6 +9,7 @@ set -e
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 echo -e "${YELLOW}Git Commit & Push${NC}"
@@ -20,9 +21,13 @@ if [[ -z $(git status -s) ]]; then
     exit 0
 fi
 
-# Show current status
-echo -e "\n${YELLOW}Current changes:${NC}"
+# Show current status (including ignored files for reference)
+echo -e "\n${YELLOW}Current changes (respecting .gitignore):${NC}"
 git status -s
+
+# Show what files would be ignored
+echo -e "\n${BLUE}Files excluded by .gitignore:${NC}"
+git status --ignored -s | grep '^!!' || echo "No ignored files in working directory"
 
 # Ask for commit message
 echo -e "\n${YELLOW}Enter commit message:${NC}"
@@ -34,12 +39,16 @@ if [[ -z "$commit_message" ]]; then
     exit 1
 fi
 
-# Add all changes
-echo -e "\n${YELLOW}Adding all changes...${NC}"
+# Add all changes (respects .gitignore automatically)
+echo -e "\n${YELLOW}Adding changes (excluding .gitignore files)...${NC}"
 git add .
 
+# Show what will be committed
+echo -e "\n${BLUE}Files to be committed:${NC}"
+git diff --cached --name-status
+
 # Commit with the provided message
-echo -e "${YELLOW}Committing changes...${NC}"
+echo -e "\n${YELLOW}Committing changes...${NC}"
 git commit -m "$commit_message
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
