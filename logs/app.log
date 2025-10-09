@@ -1,4 +1,4 @@
-11:10:13 PM [express] serving on port 3000
+2:15:58 PM [express] serving on port 3000
 🔧 Extraction service created with backend: gemini_fallback
 🚀 Starting extraction with backend: gemini_fallback
 ✅ Extraction services initialized
@@ -10,19 +10,127 @@ Gemini API response: {
       "content": {
         "parts": [
           {
-            "text": "```json\n{\n  \"productName\": \"Chestnut Mushrooms\",\n  \"price\": 1.15,\n  \"confidence\": 0.9,\n  \"discount\": {\n    \"type\": \"bulk_price\",\n    \"quantity\": 2,\n    \"value\": 2.0,\n    \"display\": \"(2 for €2)\"\n  }\n}\n```"
+            "text": "```json\n{\n  \"productName\": \"WOODEN SPOON RAW HONEY 500g\",\n  \"price\": 11.45,\n  \"confidence\": 0.9,\n  \"discount\": null\n}\n```"
           }
         ],
         "role": "model"
       },
       "finishReason": "STOP",
-      "avgLogprobs": -0.00539510483029245
+      "avgLogprobs": -0.018584589163462322
     }
   ],
   "usageMetadata": {
     "promptTokenCount": 856,
-    "candidatesTokenCount": 87,
-    "totalTokenCount": 943,
+    "candidatesTokenCount": 54,
+    "totalTokenCount": 910,
+    "promptTokensDetails": [
+      {
+        "modality": "IMAGE",
+        "tokenCount": 258
+      },
+      {
+        "modality": "TEXT",
+        "tokenCount": 598
+      }
+    ],
+    "candidatesTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 54
+      }
+    ]
+  },
+  "modelVersion": "gemini-2.0-flash-lite",
+  "responseId": "57XnaJTNDM3qkdUP3tG92AE"
+}
+📊 Logged API call: Gemini - SUCCESS - 1.425s
+✅ Gemini extraction successful: {
+  productName: 'WOODEN SPOON RAW HONEY 500g',
+  price: 11.45,
+  confidence: 0.9,
+  discount: null
+}
+✅ Gemini extraction successful, no fallback needed
+⏱️ Extraction completed in 1428ms
+2:17:28 PM [express] POST /api/ocr 200 in 1432ms :: {"success":true,"productName":"WOODEN SPOON RAW …
+🔧 Extraction service created with backend: gemini_fallback
+🚀 Starting extraction with backend: gemini_fallback
+✅ Extraction services initialized
+🤖 Using Gemini API with OCR fallback
+🔄 Using Gemini API for extraction...
+Gemini API response: {
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```json\n{\n  \"productName\": \"DRIED BANANA\",\n  \"price\": 4.29,\n  \"confidence\": 0.9,\n  \"discount\": null\n}\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "avgLogprobs": -0.01139017421266307
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 856,
+    "candidatesTokenCount": 46,
+    "totalTokenCount": 902,
+    "promptTokensDetails": [
+      {
+        "modality": "IMAGE",
+        "tokenCount": 258
+      },
+      {
+        "modality": "TEXT",
+        "tokenCount": 598
+      }
+    ],
+    "candidatesTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 46
+      }
+    ]
+  },
+  "modelVersion": "gemini-2.0-flash-lite",
+  "responseId": "9rXnaLCPAdufkdUPmdKbqAU"
+}
+📊 Logged API call: Gemini - SUCCESS - 1.211s
+✅ Gemini extraction successful: {
+  productName: 'DRIED BANANA',
+  price: 4.29,
+  confidence: 0.9,
+  discount: null
+}
+✅ Gemini extraction successful, no fallback needed
+⏱️ Extraction completed in 1213ms
+2:17:43 PM [express] POST /api/ocr 200 in 1215ms :: {"success":true,"productName":"DRIED BANANA","pr…
+🔧 Extraction service created with backend: gemini_fallback
+🚀 Starting extraction with backend: gemini_fallback
+✅ Extraction services initialized
+🤖 Using Gemini API with OCR fallback
+🔄 Using Gemini API for extraction...
+Gemini API response: {
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```json\n{\n  \"productName\": \"Deep Riverrock Apple & Pear 750 ml\",\n  \"price\": 1.75,\n  \"confidence\": 0.9,\n  \"discount\": null\n}\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "avgLogprobs": -0.00837159719107286
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 856,
+    "candidatesTokenCount": 53,
+    "totalTokenCount": 909,
     "promptTokensDetails": [
       {
         "modality": "TEXT",
@@ -36,21 +144,80 @@ Gemini API response: {
     "candidatesTokensDetails": [
       {
         "modality": "TEXT",
-        "tokenCount": 87
+        "tokenCount": 53
       }
     ]
   },
   "modelVersion": "gemini-2.0-flash-lite",
-  "responseId": "9AGhaKxgo_6qww_i1YaJBw"
+  "responseId": "-7XnaJTgB5HrkdUPj9C_kQU"
 }
-📊 Logged API call: Gemini - SUCCESS - 1.620s
+📊 Logged API call: Gemini - SUCCESS - 1.405s
 ✅ Gemini extraction successful: {
-  productName: 'Chestnut Mushrooms',
-  price: 1.15,
+  productName: 'Deep Riverrock Apple & Pear 750 ml',
+  price: 1.75,
   confidence: 0.9,
-  discount: { type: 'bulk_price', quantity: 2, value: 2, display: '(2 for €2)' }
+  discount: null
 }
-✅ Discount detected by Gemini: { type: 'bulk_price', quantity: 2, value: 2, display: '(2 for €2)' }
 ✅ Gemini extraction successful, no fallback needed
-⏱️ Extraction completed in 1625ms
-11:11:01 PM [express] POST /api/ocr 200 in 1627ms :: {"success":true,"productName":"Chestnut Mushroom…
+⏱️ Extraction completed in 1407ms
+2:17:48 PM [express] POST /api/ocr 200 in 1408ms :: {"success":true,"productName":"Deep Riverrock Ap…
+🔧 Extraction service created with backend: gemini_fallback
+🚀 Starting extraction with backend: gemini_fallback
+✅ Extraction services initialized
+🤖 Using Gemini API with OCR fallback
+🔄 Using Gemini API for extraction...
+Gemini API response: {
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```json\n{\n  \"productName\": \"Chicken Thigh Fillet\",\n  \"price\": 5.49,\n  \"confidence\": 0.9,\n  \"discount\": {\n    \"type\": \"bulk_price\",\n    \"quantity\": 2,\n    \"value\": 10.0,\n    \"display\": \"(2 for €10)\"\n  }\n}\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "avgLogprobs": -0.0013683087059429713
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 856,
+    "candidatesTokenCount": 91,
+    "totalTokenCount": 947,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 598
+      },
+      {
+        "modality": "IMAGE",
+        "tokenCount": 258
+      }
+    ],
+    "candidatesTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 91
+      }
+    ]
+  },
+  "modelVersion": "gemini-2.0-flash-lite",
+  "responseId": "ALbnaKryLKuD7M8P7Kab4QQ"
+}
+📊 Logged API call: Gemini - SUCCESS - 1.741s
+✅ Gemini extraction successful: {
+  productName: 'Chicken Thigh Fillet',
+  price: 5.49,
+  confidence: 0.9,
+  discount: {
+    type: 'bulk_price',
+    quantity: 2,
+    value: 10,
+    display: '(2 for €10)'
+  }
+}
+✅ Discount detected by Gemini: { type: 'bulk_price', quantity: 2, value: 10, display: '(2 for €10)' }
+✅ Gemini extraction successful, no fallback needed
+⏱️ Extraction completed in 1743ms
+2:17:54 PM [express] POST /api/ocr 200 in 1745ms :: {"success":true,"productName":"Chicken Thigh Fil…

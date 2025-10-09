@@ -5,6 +5,7 @@ import { storageService } from "@/lib/storage";
 import { BinPackingAlgorithm } from "@/lib/bin-packing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AutocompleteInput } from "@/components/autocomplete-input";
 import { ShoppingItemComponent } from "@/components/shopping-item";
 import { GroupContainer } from "@/components/group-container";
 import { QuantityInput } from "@/components/quantity-input";
@@ -17,17 +18,25 @@ export default function ShoppingListPage() {
   const [, params] = useRoute("/list/:id");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  
+
   const [currentList, setCurrentList] = useState<ShoppingList | null>(null);
   const [newItem, setNewItem] = useState<InsertShoppingItem>({
     name: "",
     price: 0,
-    quantity: 1
+    quantity: 1,
+    discountApplied: false,
+    onHold: false
   });
   // Replace targetAmount and numberOfGroups state with groupSpecs array
   const [groupSpecs, setGroupSpecs] = useState([{ targetAmount: 25, count: 2 }]);
   const [editingItem, setEditingItem] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<{ name: string; price: number; quantity: number }>({ name: "", price: 0, quantity: 1 });
+  const [editForm, setEditForm] = useState<{ name: string; price: number; quantity: number; discountApplied: boolean; onHold: boolean }>({
+    name: "",
+    price: 0,
+    quantity: 1,
+    discountApplied: false,
+    onHold: false
+  });
   const [showSplitPanel, setShowSplitPanel] = useState<boolean>(false);
   const [editingGroupTarget, setEditingGroupTarget] = useState<string | null>(null);
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null);
@@ -36,6 +45,10 @@ export default function ShoppingListPage() {
   // Add state for OCR loading text
   const [ocrLoadingText, setOcrLoadingText] = useState<string | null>(null);
   const [ocrIsProcessing, setOcrIsProcessing] = useState(false);
+  // Add state for autocomplete suggestions
+  const [itemNameSuggestions, setItemNameSuggestions] = useState<string[]>([]);
+  // Add state for currency symbol
+  const [currencySymbol, setCurrencySymbol] = useState("€");
 
   useEffect(() => {
     if (params?.id) {
@@ -51,6 +64,13 @@ export default function ShoppingListPage() {
         setLocation("/");
       }
     }
+
+    // Load item name suggestions
+    setItemNameSuggestions(storageService.getItemNames());
+    
+    // Load currency symbol
+    const savedCurrency = localStorage.getItem('currencySymbol') || '€';
+    setCurrencySymbol(savedCurrency);
   }, [params?.id, setLocation, toast]);
 
   const updateList = (updatedList: ShoppingList) => {
@@ -61,6 +81,35 @@ export default function ShoppingListPage() {
 
     setCurrentList(updatedList);
     storageService.updateList(updatedList);
+  };
+
+  // Function to clean item name by removing discount information
+  const cleanItemName = (itemName: string): string => {
+    // Remove discount patterns like "(3 for €10)", "(3 for 2)", "(Buy 2 get 1)", etc.
+    return itemName
+      .replace(/\s*\([^)]*for[^)]*\)/gi, '') // Remove "(X for Y)" patterns
+      .replace(/\s*\(buy[^)]*get[^)]*\)/gi, '') // Remove "(buy X get Y)" patterns
+      .replace(/\s*\([^)]*€[^)]*\)/gi, '') // Remove any pattern with currency symbols
+      .replace(/\s*\([^)]*\$[^)]*\)/gi, '') // Remove any pattern with dollar signs
+      .replace(/\s*\([^)]*£[^)]*\)/gi, '') // Remove any pattern with pound signs
+      .replace(/\s*\([^)]*¥[^)]*\)/gi, '') // Remove any pattern with yen signs
+      .trim();
+  };
+
+  // Function to save all item names from current list
+  const saveItemNamesFromList = () => {
+    if (currentList && currentList.items.length > 0) {
+      const itemNames = currentList.items
+        .map(item => cleanItemName(item.name.trim()))
+        .filter(name => name.length > 0);
+      storageService.saveItemNames(itemNames);
+    }
+  };
+
+  // Function to handle navigation back
+  const handleBackNavigation = () => {
+    saveItemNamesFromList();
+    setLocation("/");
   };
 
   const handleAddItem = () => {
@@ -74,26 +123,27 @@ export default function ShoppingListPage() {
     }
 
     // Apply discount automatically if quantity matches discount requirement
-    const discountApplied = newItem.discount ? canApplyDiscount({ 
-      ...newItem, 
-      discountApplied: false 
+    const discountApplied = newItem.discount ? canApplyDiscount({
+      ...newItem,
+      discountApplied: false
     } as ShoppingItem) : false;
-    
+
     const item: ShoppingItem = {
       id: `item-${Date.now()}`,
       name: newItem.name.trim(),
       price: Number(newItem.price),
       quantity: newItem.quantity,
-      total: newItem.discount && discountApplied ? 
-        calculateItemTotal({ 
-          ...newItem, 
+      total: newItem.discount && discountApplied ?
+        calculateItemTotal({
+          ...newItem,
           discountApplied: true,
           id: `temp-${Date.now()}`,
           total: 0
         } as ShoppingItem) :
         Number((newItem.price * newItem.quantity).toFixed(2)),
       discount: newItem.discount,
-      discountApplied
+      discountApplied,
+      onHold: false
     };
 
     const updatedList = {
@@ -102,7 +152,15 @@ export default function ShoppingListPage() {
     };
 
     updateList(updatedList);
-    setNewItem({ name: "", price: 0, quantity: 1 });
+
+    // Save the new item name for autocomplete (cleaned)
+    const cleanedName = cleanItemName(newItem.name.trim());
+    if (cleanedName) {
+      storageService.addItemName(cleanedName);
+      setItemNameSuggestions(storageService.getItemNames());
+    }
+
+    setNewItem({ name: "", price: 0, quantity: 1, discountApplied: false, onHold: false });
     setOcrIsProcessing(false);
     setOcrLoadingText(null);
     (window as any).__ocrLoadingText = null;
@@ -262,8 +320,8 @@ export default function ShoppingListPage() {
   const handleUpdateGroupTarget = (groupId: string, newTarget: number) => {
     if (!currentList || !currentList.groups) return;
 
-    const updatedGroups = currentList.groups.map(group => 
-      group.id === groupId 
+    const updatedGroups = currentList.groups.map(group =>
+      group.id === groupId
         ? { ...group, targetAmount: newTarget }
         : group
     );
@@ -279,7 +337,13 @@ export default function ShoppingListPage() {
 
   const handleEditItem = (item: ShoppingItem) => {
     setEditingItem(item.id);
-    setEditForm({ name: item.name, price: item.price, quantity: item.quantity });
+    setEditForm({
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      discountApplied: item.discountApplied,
+      onHold: item.onHold
+    });
   };
 
   const handleSaveEdit = (itemId: string) => {
@@ -294,13 +358,13 @@ export default function ShoppingListPage() {
           price: editForm.price,
           quantity: editForm.quantity
         };
-        
+
         // Check if discount should be automatically applied based on new quantity
         let discountApplied = item.discountApplied;
         if (item.discount) {
           const shouldApplyDiscount = canApplyDiscount(updatedItem);
           discountApplied = shouldApplyDiscount;
-          
+
           // Show toast notification if discount status changed
           if (shouldApplyDiscount && !item.discountApplied) {
             toast({
@@ -316,15 +380,15 @@ export default function ShoppingListPage() {
             });
           }
         }
-        
+
         // Apply the discount status and calculate total
         const finalItem = {
           ...updatedItem,
           discountApplied
         };
-        
+
         const newTotal = calculateItemTotal(finalItem);
-        
+
         return {
           ...finalItem,
           total: newTotal
@@ -344,22 +408,22 @@ export default function ShoppingListPage() {
             price: editForm.price,
             quantity: editForm.quantity
           };
-          
+
           // Check if discount should be automatically applied based on new quantity
           let discountApplied = item.discountApplied;
           if (item.discount) {
             const shouldApplyDiscount = canApplyDiscount(updatedItem);
             discountApplied = shouldApplyDiscount;
           }
-          
+
           // Apply the discount status and calculate total
           const finalItem = {
             ...updatedItem,
             discountApplied
           };
-          
+
           const newTotal = calculateItemTotal(finalItem);
-          
+
           return {
             ...finalItem,
             total: newTotal
@@ -375,20 +439,20 @@ export default function ShoppingListPage() {
             price: editForm.price,
             quantity: editForm.quantity
           };
-          
+
           // Check if discount should be automatically applied based on new quantity
           let discountApplied = item.discountApplied;
           if (item.discount) {
             const shouldApplyDiscount = canApplyDiscount(updatedItem);
             discountApplied = shouldApplyDiscount;
           }
-          
+
           // Apply the discount status and calculate total
           const finalItem = {
             ...updatedItem,
             discountApplied
           };
-          
+
           return calculateItemTotal(finalItem);
         }
         return item.total;
@@ -402,6 +466,14 @@ export default function ShoppingListPage() {
     };
 
     updateList(updatedList);
+
+    // Save the edited item name for autocomplete (cleaned)
+    const cleanedName = cleanItemName(editForm.name.trim());
+    if (cleanedName) {
+      storageService.addItemName(cleanedName);
+      setItemNameSuggestions(storageService.getItemNames());
+    }
+
     setEditingItem(null);
   };
 
@@ -464,15 +536,17 @@ export default function ShoppingListPage() {
     // Clear global window variables
     (window as any).__ocrLoadingText = null;
     (window as any).__ocrIsProcessing = false;
-    
+
     // Add discount information to product name if detected
     const displayName = discount ? `${productName.trim()} ${discount.display}` : productName.trim();
-    
+
     setNewItem({
       name: displayName || "", // If no product name found, keep it empty
       price: price,
       quantity: discount ? discount.quantity : 1, // Set quantity to discount quantity if available
-      discount: discount
+      discount: discount,
+      discountApplied: false,
+      onHold: false
     });
     // Removed toast notification to prevent blocking dialog
   };
@@ -484,7 +558,7 @@ export default function ShoppingListPage() {
       if (savedSpecs) {
         try {
           setGroupSpecs(JSON.parse(savedSpecs));
-        } catch {}
+        } catch { }
       }
     }
     // eslint-disable-next-line
@@ -505,6 +579,13 @@ export default function ShoppingListPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // Save item names when component unmounts
+  useEffect(() => {
+    return () => {
+      saveItemNamesFromList();
+    };
+  }, [currentList]);
+
   if (!currentList) {
     return (
       <div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
@@ -515,19 +596,19 @@ export default function ShoppingListPage() {
     );
   }
 
-  const unassignedItems = currentList.isSplitMode && currentList.groups 
+  const unassignedItems = currentList.isSplitMode && currentList.groups
     ? currentList.items.filter(item => {
-        // Check if this original item is fully represented in groups
-        const totalInGroups = currentList.groups?.reduce((total, group) => {
-          const matchingItems = group.items.filter(groupItem => 
-            groupItem.id.startsWith(item.id + '-') || groupItem.id === item.id
-          );
-          return total + matchingItems.reduce((sum, matchingItem) => sum + matchingItem.quantity, 0);
-        }, 0) || 0;
-        
-        // Item is unassigned if its total quantity is not fully represented in groups
-        return totalInGroups < item.quantity;
-      })
+      // Check if this original item is fully represented in groups
+      const totalInGroups = currentList.groups?.reduce((total, group) => {
+        const matchingItems = group.items.filter(groupItem =>
+          groupItem.id.startsWith(item.id + '-') || groupItem.id === item.id
+        );
+        return total + matchingItems.reduce((sum, matchingItem) => sum + matchingItem.quantity, 0);
+      }, 0) || 0;
+
+      // Item is unassigned if its total quantity is not fully represented in groups
+      return totalInGroups < item.quantity;
+    })
     : currentList.items;
 
   return (
@@ -536,10 +617,10 @@ export default function ShoppingListPage() {
       <div className="bg-white border-b border-gray-200 p-4 sticky top-0 z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <Button 
+            <Button
               variant="ghost"
               size="sm"
-              onClick={() => setLocation("/")}
+              onClick={handleBackNavigation}
               className="mr-3 p-2 hover:bg-gray-100"
             >
               <ArrowLeft className="h-4 w-4 text-gray-600" />
@@ -552,56 +633,61 @@ export default function ShoppingListPage() {
             </div>
           </div>
           <div className="text-right">
-            <p className="text-lg font-bold text-secondary">€{currentList.total.toFixed(2)}</p>
+            <p className="text-lg font-bold text-secondary">{currencySymbol}{currentList.total.toFixed(2)}</p>
             <p className="text-xs text-gray-500">{currentList.items.length} items</p>
           </div>
         </div>
       </div>
 
       {/* Add Item Form */}
-      <div className="add-item-form bg-white border-b border-gray-200 p-4">
-        <div className="space-y-3">
-          <div className="flex gap-2">
-            <Input
-              type="text"
-              value={newItem.name}
-              onChange={(e) => setNewItem(prev => ({ ...prev, name: e.target.value }))}
-              placeholder={ocrIsProcessing ? (ocrLoadingText || "Loading...") : "Item name"}
-              className="flex-1 px-4 py-3 text-base"
-            />
-            <Button 
-              onClick={() => { 
+      <div className="add-item-form bg-white border-b border-gray-200 p-4 w-full">
+        <div className="space-y-3 w-full">
+          {/* Item name field and camera - full width row */}
+          <div className="flex gap-1 w-full items-stretch">
+            <div className="flex-1 min-w-0">
+              <AutocompleteInput
+                value={newItem.name}
+                onChange={(value) => setNewItem(prev => ({ ...prev, name: value }))}
+                suggestions={itemNameSuggestions}
+                placeholder={ocrIsProcessing ? (ocrLoadingText || "Loading...") : "Item name"}
+                className="w-full px-4 py-3 text-base"
+                disabled={ocrIsProcessing}
+              />
+            </div>
+            <Button
+              onClick={() => {
                 setPhotoCaptureKey(prev => prev + 1);
-                setShowPhotoCapture(true); 
-                setNewItem({ name: "", price: 0, quantity: 1 }); 
+                setShowPhotoCapture(true);
+                setNewItem({ name: "", price: 0, quantity: 1, discountApplied: false, onHold: false });
               }}
               variant="outline"
-              className="px-4 py-3 flex items-center justify-center min-w-[44px]"
+              className="px-3 py-3 flex items-center justify-center w-12 shrink-0"
               title="Capture price tag with camera"
             >
-              <Camera className="h-5 w-5" />
+              <Camera className="h-4 w-4" />
             </Button>
           </div>
+          {/* Price, quantity, and add button */}
           <div className="flex gap-2">
             <Input
               type="number"
               value={newItem.price || ""}
               onChange={(e) => setNewItem(prev => ({ ...prev, price: Number(e.target.value) }))}
-              placeholder="€0.00"
+              placeholder={`${currencySymbol}0.00`}
               step="0.01"
               className="flex-1 px-4 py-3 text-base"
             />
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <span className="text-sm text-gray-600 font-medium">Qty:</span>
               <QuantityInput
                 value={newItem.quantity}
                 onChange={(value) => setNewItem(prev => ({ ...prev, quantity: value }))}
-                className="w-28"
+                className="w-32"
               />
             </div>
-            <Button 
+            <Button
               onClick={handleAddItem}
-              className="bg-primary text-white hover:bg-blue-800 px-4 py-3 flex items-center justify-center min-w-[44px]"
+              className="bg-primary text-white hover:bg-blue-800 px-4 py-3 flex items-center justify-center min-w-[44px] shrink-0"
             >
               <Plus className="h-5 w-5" />
             </Button>
@@ -633,7 +719,7 @@ export default function ShoppingListPage() {
                 isDragOver={dragOverGroup === group.id}
               />
             ))}
-            
+
             {unassignedItems.length > 0 && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <h3 className="font-medium text-gray-900 mb-2">Unassigned Items</h3>
@@ -641,15 +727,15 @@ export default function ShoppingListPage() {
                   {unassignedItems.map((item) => {
                     // Calculate how many units are already assigned to groups
                     const assignedQuantity = currentList.groups?.reduce((total, group) => {
-                      const matchingItems = group.items.filter(groupItem => 
+                      const matchingItems = group.items.filter(groupItem =>
                         groupItem.id.startsWith(item.id + '-') || groupItem.id === item.id
                       );
                       return total + matchingItems.reduce((sum, matchingItem) => sum + matchingItem.quantity, 0);
                     }, 0) || 0;
-                    
+
                     const remainingQuantity = item.quantity - assignedQuantity;
                     const unitPrice = item.price;
-                    
+
                     // Create individual draggable units for remaining quantity with proper numbering
                     return Array.from({ length: remainingQuantity }, (_, index) => {
                       const actualIndex = assignedQuantity + index + 1; // Start from where we left off
@@ -661,7 +747,7 @@ export default function ShoppingListPage() {
                         originalQuantity: item.quantity,
                         splitIndex: actualIndex
                       };
-                      
+
                       return (
                         <div
                           key={`${item.id}-unassigned-${index}`}
@@ -673,7 +759,7 @@ export default function ShoppingListPage() {
                             <span className="font-medium text-gray-900">
                               {item.name} ({actualIndex}/{item.quantity})
                             </span>
-                            <span className="text-secondary font-medium">€{unitPrice.toFixed(2)}</span>
+                            <span className="text-secondary font-medium">{currencySymbol}{unitPrice.toFixed(2)}</span>
                           </div>
                         </div>
                       );
@@ -696,49 +782,50 @@ export default function ShoppingListPage() {
                   <div key={item.id} className="bg-white border border-gray-200 rounded-lg p-3 mb-2 shadow-sm">
                     <div className="space-y-2">
                       <div className="font-medium text-gray-900">
-                        <Input
-                          type="text"
+                        <AutocompleteInput
                           value={editForm.name || ""}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                          onChange={(value) => setEditForm(prev => ({ ...prev, name: value }))}
+                          suggestions={itemNameSuggestions}
                           placeholder="Item name"
-                          className="w-full px-3 py-2 text-base"
+                          className="w-full px-4 py-3 text-base"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Input
-                          type="number"
-                          value={editForm.price}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, price: Number(e.target.value) }))}
-                          placeholder="€0.00"
-                          step="0.01"
-                          className="w-full px-3 py-2 text-base"
-                        />
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-600 font-medium">Qty:</span>
-                            <QuantityInput
-                              value={editForm.quantity}
-                              onChange={(value) => setEditForm(prev => ({ ...prev, quantity: value }))}
-                              className="w-28"
-                            />
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => handleSaveEdit(item.id)}
-                              className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 min-w-[44px]"
-                            >
-                              <Check className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={handleCancelEdit}
-                              className="text-gray-600 hover:bg-gray-100 px-3 py-2 min-w-[44px]"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">{currencySymbol}</span>
+                          <Input
+                            type="number"
+                            value={editForm.price}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, price: Number(e.target.value) }))}
+                            placeholder="0.00"
+                            step="0.01"
+                            className="w-full pl-6 pr-2 py-2 text-base"
+                          />
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="text-xs text-gray-600 font-medium">Qty:</span>
+                          <QuantityInput
+                            value={editForm.quantity}
+                            onChange={(value) => setEditForm(prev => ({ ...prev, quantity: value }))}
+                            className="w-32"
+                          />
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <Button
+                            size="sm"
+                            onClick={() => handleSaveEdit(item.id)}
+                            className="bg-green-600 hover:bg-green-700 text-white px-2 py-2 min-w-[36px]"
+                          >
+                            <Check className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={handleCancelEdit}
+                            className="text-gray-600 hover:bg-gray-100 px-2 py-2 min-w-[36px]"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -755,13 +842,13 @@ export default function ShoppingListPage() {
                           item.onHold ? "text-gray-500" : "text-gray-900"
                         )}>{item.name}</h4>
                         <div className="flex items-center space-x-3 mt-1">
-                          <span className="text-sm text-gray-600">€{item.price.toFixed(2)}</span>
+                          <span className="text-sm text-gray-600">{currencySymbol}{item.price.toFixed(2)}</span>
                           <span className="text-sm text-gray-600">Qty: {item.quantity}</span>
                           <span className={cn(
                             "text-sm font-medium",
                             item.onHold ? "text-gray-500" : item.discountApplied ? "text-green-600" : "text-secondary"
                           )}>
-                            €{item.total.toFixed(2)}
+                            {currencySymbol}{item.total.toFixed(2)}
                             {item.discountApplied && !item.onHold && <span className="ml-1 text-xs">(discounted)</span>}
                             {item.onHold && <span className="ml-1 text-xs">(on hold)</span>}
                           </span>
@@ -827,14 +914,14 @@ export default function ShoppingListPage() {
       {/* Bottom Split Panel */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 max-w-md mx-auto">
         {!currentList.isSplitMode ? (
-          <Button 
+          <Button
             onClick={() => setShowSplitPanel(true)}
             className="w-full bg-accent text-white hover:bg-orange-600 py-3 text-base font-medium"
           >
             Split List
           </Button>
         ) : (
-          <Button 
+          <Button
             onClick={handleToggleSplitMode}
             variant="outline"
             className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 py-3 text-base font-medium"
@@ -850,7 +937,7 @@ export default function ShoppingListPage() {
           <div className="bg-white w-full max-w-md rounded-t-lg p-6 max-h-[50vh] overflow-y-auto border-t-2 border-l-2 border-r-2 border-gray-200 shadow-xl">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Configure Split</h3>
-              <Button 
+              <Button
                 variant="ghost"
                 onClick={() => setShowSplitPanel(false)}
                 className="p-2 hover:bg-gray-100"
@@ -858,11 +945,11 @@ export default function ShoppingListPage() {
                 <X className="h-5 w-5" />
               </Button>
             </div>
-            
+
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-32">
-                  <label className="block text-xs font-semibold text-gray-500">Target Amount (€)</label>
+                  <label className="block text-xs font-semibold text-gray-500">Target Amount ({currencySymbol})</label>
                 </div>
                 <div className="w-32">
                   <label className="block text-xs font-semibold text-gray-500">Number of Groups</label>
@@ -923,14 +1010,14 @@ export default function ShoppingListPage() {
                 </div>
               ))}
               <div className="flex gap-3 pt-2">
-                <Button 
+                <Button
                   variant="outline"
                   onClick={() => setShowSplitPanel(false)}
                   className="flex-1 py-3 text-base"
                 >
                   Cancel
                 </Button>
-                <Button 
+                <Button
                   onClick={handleRunBinPacking}
                   className="flex-1 bg-accent text-white hover:bg-orange-600 py-3 text-base font-medium"
                 >
