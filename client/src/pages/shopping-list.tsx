@@ -844,33 +844,35 @@ export default function ShoppingListPage() {
                         <div className="flex items-center space-x-3 mt-1">
                           <span className="text-sm text-gray-600">{currencySymbol}{item.price.toFixed(2)}</span>
                           <span className="text-sm text-gray-600">Qty: {item.quantity}</span>
-                          <span className={cn(
-                            "text-sm font-medium",
-                            item.onHold ? "text-gray-500" : item.discountApplied ? "text-green-600" : "text-secondary"
-                          )}>
-                            {currencySymbol}{item.total.toFixed(2)}
-                            {item.discountApplied && !item.onHold && <span className="ml-1 text-xs">(discounted)</span>}
-                            {item.onHold && <span className="ml-1 text-xs">(on hold)</span>}
-                          </span>
+                          <div className="flex items-center gap-1">
+                            <span className={cn(
+                              "text-sm font-medium",
+                              item.onHold ? "text-gray-500" : item.discountApplied ? "text-green-600" : "text-secondary"
+                            )}>
+                              {currencySymbol}{item.total.toFixed(2)}
+                              {item.discountApplied && !item.onHold && <span className="ml-1 text-xs">(discounted)</span>}
+                              {item.onHold && <span className="ml-1 text-xs">(on hold)</span>}
+                            </span>
+                            {item.discount && canApplyDiscount(item) && (
+                              <Button
+                                variant={item.discountApplied ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => handleToggleDiscount(item.id)}
+                                className={cn(
+                                  "p-0.5 text-xs h-5 w-5",
+                                  item.discountApplied
+                                    ? "bg-green-600 hover:bg-green-700 text-white"
+                                    : "text-green-600 border-green-600 hover:bg-green-50"
+                                )}
+                                title={`Apply discount: ${item.discount.display}`}
+                              >
+                                <Tag className="h-2.5 w-2.5" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        {item.discount && canApplyDiscount(item) && (
-                          <Button
-                            variant={item.discountApplied ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => handleToggleDiscount(item.id)}
-                            className={cn(
-                              "p-1 text-xs",
-                              item.discountApplied
-                                ? "bg-green-600 hover:bg-green-700 text-white"
-                                : "text-green-600 border-green-600 hover:bg-green-50"
-                            )}
-                            title={`Apply discount: ${item.discount.display}`}
-                          >
-                            <Tag className="h-3 w-3" />
-                          </Button>
-                        )}
                         <Button
                           variant="ghost"
                           size="sm"
