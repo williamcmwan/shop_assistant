@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, X, Camera, Tag, Package, PauseCircle } from "lucide-react";
+import { ArrowRight, X, Camera, Tag, Package, PauseCircle, Type, Settings } from "lucide-react";
 
 interface SplashScreenProps {
   onClose: () => void;
@@ -16,7 +16,35 @@ interface Feature {
 
 const features: Feature[] = [
   {
-    title: "Smart Photo Capture",
+    title: "Auto Complete Input",
+    description: "Smart suggestions based on your shopping history for faster item entry",
+    icon: "⌨️",
+    iconComponent: <Type className="w-12 h-12" />,
+    gradient: "from-indigo-400 to-indigo-600"
+  },
+  {
+    title: "Currency Configuration",
+    description: "Customize your currency symbol - supports €, $, £, ¥ and custom symbols",
+    icon: "💱",
+    iconComponent: <Settings className="w-12 h-12" />,
+    gradient: "from-emerald-400 to-emerald-600"
+  },
+  {
+    title: "Hold Items",
+    description: "Put items on hold to exclude them from totals and splitting calculations",
+    icon: "⏸️",
+    iconComponent: <PauseCircle className="w-12 h-12" />,
+    gradient: "from-orange-400 to-orange-600"
+  },
+  {
+    title: "Intelligent Grouping",
+    description: "Smart bin-packing algorithm optimally splits lists by target amounts",
+    icon: "📦",
+    iconComponent: <Package className="w-12 h-12" />,
+    gradient: "from-purple-400 to-purple-600"
+  },
+  {
+    title: "Photo Capture Pricing",
     description: "Scan price tags instantly with AI-powered OCR technology",
     icon: "📸",
     iconComponent: <Camera className="w-12 h-12" />,
@@ -24,24 +52,10 @@ const features: Feature[] = [
   },
   {
     title: "Multi-Purchase Discounts",
-    description: "Automatically detect and apply volume discounts like '3 for €10'",
+    description: "Automatically detect and apply volume discounts like '3 for €10' or 'Buy 2 Get 1'",
     icon: "🏷️",
     iconComponent: <Tag className="w-12 h-12" />,
     gradient: "from-green-400 to-green-600"
-  },
-  {
-    title: "Intelligent Grouping",
-    description: "Smart bin-packing algorithm splits lists optimally",
-    icon: "📦",
-    iconComponent: <Package className="w-12 h-12" />,
-    gradient: "from-purple-400 to-purple-600"
-  },
-  {
-    title: "Hold Items",
-    description: "Put items on hold to exclude them from totals and splitting",
-    icon: "⏸️",
-    iconComponent: <PauseCircle className="w-12 h-12" />,
-    gradient: "from-orange-400 to-orange-600"
   }
 ];
 
@@ -49,6 +63,8 @@ export function SplashScreen({ onClose }: SplashScreenProps) {
   const [currentFeature, setCurrentFeature] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
   useEffect(() => {
     // Prevent body scroll when splash screen is visible
@@ -69,13 +85,40 @@ export function SplashScreen({ onClose }: SplashScreenProps) {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentFeature((prev) => (prev + 1) % features.length);
-    }, 3500);
+    }, 6000); // 6 seconds for better readability
 
     return () => clearInterval(timer);
-  }, []);
+  }, [currentFeature]); // Reset timer when currentFeature changes
+
+  // Swipe handling functions
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe) {
+      // Swipe left - next feature (timer will reset due to currentFeature change)
+      setCurrentFeature((prev) => (prev + 1) % features.length);
+    } else if (isRightSwipe) {
+      // Swipe right - previous feature (timer will reset due to currentFeature change)
+      setCurrentFeature((prev) => (prev - 1 + features.length) % features.length);
+    }
+  };
 
   const handleClose = () => {
-    localStorage.setItem('splashScreenShown', 'true');
+    const SPLASH_VERSION = 'v2.0'; // Keep in sync with App.tsx
+    localStorage.setItem(`splashScreenShown_${SPLASH_VERSION}`, 'true');
     setFadeOut(true);
     setTimeout(() => {
       setIsVisible(false);
@@ -155,10 +198,15 @@ export function SplashScreen({ onClose }: SplashScreenProps) {
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 sm:mb-3 drop-shadow-lg">
             Powerful Features
           </h2>
-          <p className="text-white/80 text-base sm:text-lg">Everything you need for smart shopping</p>
+          <p className="text-white/80 text-base sm:text-lg">Swipe or click to explore • {features.length} features</p>
         </div>
 
-        <div className="relative h-44 sm:h-52 mb-6 sm:mb-8">
+        <div 
+          className="relative h-44 sm:h-52 mb-6 sm:mb-8"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
           {features.map((feature, index) => (
             <div
               key={index}

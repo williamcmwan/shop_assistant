@@ -25,8 +25,9 @@ function App() {
   const [showSplash, setShowSplash] = useState(false);
 
   useEffect(() => {
-    // Check if splash screen has been shown before
-    const splashShown = localStorage.getItem('splashScreenShown');
+    // Check if splash screen has been shown for this version
+    const SPLASH_VERSION = 'v2.0'; // Update this when splash content changes
+    const splashShown = localStorage.getItem(`splashScreenShown_${SPLASH_VERSION}`);
     if (!splashShown) {
       setShowSplash(true);
     }

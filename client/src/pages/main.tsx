@@ -87,7 +87,8 @@ export default function MainPage() {
   };
 
   const handleShowSplashScreen = () => {
-    localStorage.removeItem('splashScreenShown');
+    const SPLASH_VERSION = 'v2.0'; // Keep in sync with App.tsx
+    localStorage.removeItem(`splashScreenShown_${SPLASH_VERSION}`);
     window.location.reload();
   };
 
