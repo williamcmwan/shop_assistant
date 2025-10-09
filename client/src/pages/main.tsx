@@ -289,11 +289,11 @@ export default function MainPage() {
                     size="sm"
                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                     disabled={currentPage === 1}
-                    className="px-3 py-2"
+                    className="px-3 py-2 text-primary border-primary hover:bg-blue-50 disabled:text-gray-400 disabled:border-gray-300"
                   >
                     &lt;
                   </Button>
-                  <div className="flex items-center px-3 py-2 text-sm font-medium">
+                  <div className="flex items-center px-3 py-2 text-sm font-medium text-primary">
                     {currentPage}/{Math.ceil(lists.length / LISTS_PER_PAGE)}
                   </div>
                   <Button
@@ -301,7 +301,7 @@ export default function MainPage() {
                     size="sm"
                     onClick={() => setCurrentPage(prev => Math.min(Math.ceil(lists.length / LISTS_PER_PAGE), prev + 1))}
                     disabled={currentPage === Math.ceil(lists.length / LISTS_PER_PAGE)}
-                    className="px-3 py-2"
+                    className="px-3 py-2 text-primary border-primary hover:bg-blue-50 disabled:text-gray-400 disabled:border-gray-300"
                   >
                     &gt;
                   </Button>
