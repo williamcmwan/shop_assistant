@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, X, Camera, Tag, Package, PauseCircle, Type, Settings } from "lucide-react";
+import { ArrowRight, X, Camera, Tag, Package, PauseCircle, Type, Settings, Palette } from "lucide-react";
 
 interface SplashScreenProps {
   onClose: () => void;
@@ -15,6 +15,13 @@ interface Feature {
 }
 
 const features: Feature[] = [
+  {
+    title: "Updated Interface",
+    description: "Fresh new design with consistent blue theme, improved layouts, and enhanced user experience",
+    icon: "🎨",
+    iconComponent: <Palette className="w-12 h-12" />,
+    gradient: "from-blue-400 to-blue-600"
+  },
   {
     title: "Auto Complete Input",
     description: "Smart suggestions based on your shopping history for faster item entry",
@@ -156,11 +163,11 @@ export function SplashScreen({ onClose }: SplashScreenProps) {
       <div className="relative text-center mb-6 sm:mb-10 z-10">
         <div className="w-20 h-20 sm:w-28 sm:h-28 mx-auto mb-4 sm:mb-5 relative animate-bounce-slow">
           {/* PNG Logo */}
-          <div className="w-full h-full flex items-center justify-center bg-white rounded-full p-2">
+          <div className="w-full h-full flex items-center justify-center">
             <img
               src="/logo_new.png"
               alt="ShopAssist Logo"
-              className="w-16 h-16 sm:w-24 sm:h-24 object-contain"
+              className="w-20 h-20 sm:w-28 sm:h-28 object-contain"
               style={{ filter: 'none', mixBlendMode: 'normal' }}
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
