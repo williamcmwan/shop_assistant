@@ -73,7 +73,9 @@ productName (REQUIRED - NEVER leave empty):
   * Look at: shape, color, packaging, brand logos, product type
 
 price:
-- Main euro amount (prefer "NOW"/"ONLY", convert "40c" to 0.40)
+- UNIT price (single item cost), NOT the discount price
+- If "2 for €3" shown with "€1.79": use €1.79 (unit price)
+- Prefer "NOW"/"ONLY" prices, convert "40c" to 0.40
 - If no price: set to 0
 
 isPerKg:
@@ -83,10 +85,14 @@ isPerKg:
 discount (look for multi-buy offers in large text/colored backgrounds):
 - "3 for 2" → {"type":"buy_x_get_y","quantity":3,"value":2,"display":"(3 for 2)"}
 - "2 for €3" → {"type":"bulk_price","quantity":2,"value":3.0,"display":"(2 for €3.00)"}
+- IMPORTANT: Extract BOTH unit price AND discount separately
+  - Example: "€1.79" with "2 for €3" → price:1.79, discount:{"type":"bulk_price","quantity":2,"value":3.0}
 
 confidence: 0.8-1.0 (text), 0.4-0.6 (visual only)
 
-Return JSON only: {"productName":"[REQUIRED]","price":0,"confidence":0.5}`
+Return JSON only.
+
+Example with discount: {"productName":"Baby Carrot Bag 200gm","price":1.79,"confidence":0.9,"discount":{"type":"bulk_price","quantity":2,"value":3.0,"display":"(2 for €3.00)"}}`
             },
             {
               inline_data: {
