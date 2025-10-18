@@ -852,6 +852,24 @@ export default function ShoppingListPage() {
     if (isPerKg && weight && productName.trim() && price > 0) {
       // Directly add the item to the list
       await addItemToList(itemData);
+    } else {
+      // Auto-focus on the appropriate field based on what's missing
+      setTimeout(() => {
+        const isNameUnknown = !productName.trim() || productName.trim().toLowerCase() === 'unknown';
+        if (isNameUnknown) {
+          // Focus on item name field if name is unknown
+          const nameInput = document.querySelector('.add-item-form input[placeholder*="Item name"]') as HTMLInputElement;
+          if (nameInput) {
+            nameInput.focus();
+          }
+        } else if (price <= 0) {
+          // Focus on price field if price is unknown
+          const priceInput = document.querySelector('.add-item-form input[type="number"][placeholder*="0.00"]') as HTMLInputElement;
+          if (priceInput) {
+            priceInput.focus();
+          }
+        }
+      }, 100);
     }
     // Removed toast notification to prevent blocking dialog
   };
