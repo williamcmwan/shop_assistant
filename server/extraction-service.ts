@@ -19,6 +19,7 @@ export interface ExtractionResult {
     display: string;
   };
   isPerKg?: boolean;
+  productImage?: string;
 }
 
 export class ExtractionService {
@@ -49,7 +50,7 @@ export class ExtractionService {
     console.log('✅ Extraction services initialized');
   }
 
-  async extractProductInfo(imageData: string): Promise<ExtractionResult> {
+  async extractProductInfo(imageData: string, extractPhoto: boolean = true): Promise<ExtractionResult> {
     const startTime = Date.now();
     
     try {
@@ -63,10 +64,10 @@ export class ExtractionService {
           return await this.extractWithOCR(imageData);
           
         case 'gemini':
-          return await this.extractWithGemini(imageData);
+          return await this.extractWithGemini(imageData, extractPhoto);
           
         case 'gemini_fallback':
-          return await this.extractWithGeminiFallback(imageData);
+          return await this.extractWithGeminiFallback(imageData, extractPhoto);
           
         default:
           throw new Error(`Unknown backend: ${this.config.backend}`);
@@ -106,18 +107,19 @@ export class ExtractionService {
       error: result.error,
       rawResponse: result.rawResponse,
       discount: result.discount,
-      isPerKg: result.isPerKg
+      isPerKg: result.isPerKg,
+      productImage: undefined // OCR doesn't provide product images
     };
   }
 
-  private async extractWithGemini(imageData: string): Promise<ExtractionResult> {
+  private async extractWithGemini(imageData: string, extractPhoto: boolean = true): Promise<ExtractionResult> {
     console.log('🤖 Using Gemini API only');
     
     if (!this.geminiService) {
       throw new Error('Gemini service not initialized');
     }
     
-    const result = await this.geminiService.extractProductInfo(imageData);
+    const result = await this.geminiService.extractProductInfo(imageData, extractPhoto);
     
     return {
       success: result.success,
@@ -128,11 +130,12 @@ export class ExtractionService {
       error: result.error,
       rawResponse: result.rawResponse,
       discount: result.discount,
-      isPerKg: result.isPerKg
+      isPerKg: result.isPerKg,
+      productImage: result.productImage
     };
   }
 
-  private async extractWithGeminiFallback(imageData: string): Promise<ExtractionResult> {
+  private async extractWithGeminiFallback(imageData: string, extractPhoto: boolean = true): Promise<ExtractionResult> {
     console.log('🤖 Using Gemini API with OCR fallback');
     
     if (!this.geminiService || !this.ocrService) {
@@ -140,10 +143,18 @@ export class ExtractionService {
     }
     
     // Try Gemini first
-    const geminiResult = await this.geminiService.extractProductInfo(imageData);
+    const geminiResult = await this.geminiService.extractProductInfo(imageData, extractPhoto);
     
-    if (geminiResult.success && geminiResult.confidence > 0.3) {
+    // Consider Gemini successful if it has good confidence OR if it identified a product (even without price)
+    const geminiHasProduct = geminiResult.productName && geminiResult.productName.trim().length > 0;
+    const geminiHasPrice = geminiResult.price > 0;
+    const geminiGoodConfidence = geminiResult.confidence > 0.3;
+    
+    if (geminiResult.success && (geminiGoodConfidence || (geminiHasProduct && geminiResult.confidence > 0.2))) {
       console.log('✅ Gemini extraction successful, no fallback needed');
+      if (geminiHasProduct && !geminiHasPrice) {
+        console.log('🖼️ Gemini identified product from image without price text');
+      }
       return {
         success: true,
         productName: geminiResult.productName,
@@ -152,7 +163,8 @@ export class ExtractionService {
         backend: 'gemini',
         rawResponse: geminiResult.rawResponse,
         discount: geminiResult.discount,
-        isPerKg: geminiResult.isPerKg
+        isPerKg: geminiResult.isPerKg,
+        productImage: geminiResult.productImage
       };
     }
     
@@ -171,6 +183,7 @@ export class ExtractionService {
       error: ocrResult.error,
       discount: ocrResult.discount || geminiResult.discount, // Use OCR discount if available, otherwise Gemini
       isPerKg: ocrResult.isPerKg || geminiResult.isPerKg, // Use OCR isPerKg if available, otherwise Gemini
+      productImage: geminiResult.productImage, // Always use Gemini's product image if available
       rawResponse: {
         gemini: geminiResult.rawResponse,
         ocr: ocrResult.rawResponse

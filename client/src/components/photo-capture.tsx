@@ -4,13 +4,13 @@ import { processImageForManualEntry } from "@/lib/ocr-service";
 import { ClientImageUtils } from "@/lib/image-utils";
 import { WeightInputDialog } from "@/components/weight-input-dialog";
 
+
 interface PhotoCaptureProps {
-  onExtractData: (productName: string, price: number, discount?: { type: "bulk_price" | "buy_x_get_y"; quantity: number; value: number; display: string }, isPerKg?: boolean, weight?: number) => void;
+  onExtractData: (productName: string, price: number, discount?: { type: "bulk_price" | "buy_x_get_y"; quantity: number; value: number; display: string }, isPerKg?: boolean, weight?: number, photo?: string) => void;
   onClose: () => void;
 }
 
 export function PhotoCapture({ onExtractData, onClose }: PhotoCaptureProps) {
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [loadingText, setLoadingText] = useState<string | null>(null);
   const [showWeightDialog, setShowWeightDialog] = useState(false);
@@ -19,6 +19,64 @@ export function PhotoCapture({ onExtractData, onClose }: PhotoCaptureProps) {
   const { toast } = useToast();
   const loadingInterval = useRef<NodeJS.Timeout | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Read product photo extraction setting
+  const extractProductPhotos = localStorage.getItem('extractProductPhotos') !== 'false';
+  
+  useEffect(() => {
+    if (!extractProductPhotos) {
+      console.log('📸 Product photo extraction is DISABLED - photos will not be created or stored');
+    }
+  }, [extractProductPhotos]);
+
+  // Create a 50x50 thumbnail from the captured image focusing on the product
+  const createProductThumbnail = async (imageData: string): Promise<string> => {
+    // Skip if photo extraction is disabled
+    if (!extractProductPhotos) {
+      console.log('⏭️ Thumbnail creation skipped (disabled in settings)');
+      return '';
+    }
+    
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Set thumbnail size to 50x50 square
+        const thumbnailSize = 50;
+        canvas.width = thumbnailSize;
+        canvas.height = thumbnailSize;
+        
+        if (ctx) {
+          // Calculate dimensions for center cropping to square
+          const { width, height } = img;
+          let sourceX = 0;
+          let sourceY = 0;
+          let sourceSize = Math.min(width, height);
+          
+          // Center the crop
+          if (width > height) {
+            sourceX = (width - height) / 2;
+          } else {
+            sourceY = (height - width) / 2;
+          }
+          
+          // Draw the cropped and scaled image
+          ctx.drawImage(
+            img,
+            sourceX, sourceY, sourceSize, sourceSize, // Source rectangle (square crop)
+            0, 0, thumbnailSize, thumbnailSize // Destination rectangle (50x50)
+          );
+          
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        } else {
+          resolve(imageData); // Fallback to original if canvas fails
+        }
+      };
+      img.src = imageData;
+    });
+  };
 
   // Immediately trigger camera on mount
   useEffect(() => {
@@ -34,7 +92,6 @@ export function PhotoCapture({ onExtractData, onClose }: PhotoCaptureProps) {
       const reader = new FileReader();
       reader.onload = async (e) => {
         const originalImageData = e.target?.result as string;
-        setCapturedImage(originalImageData);
         setIsProcessing(true);
         setLoadingText('Optimizing image');
 
@@ -62,10 +119,15 @@ export function PhotoCapture({ onExtractData, onClose }: PhotoCaptureProps) {
 
           setLoadingText('Processing image');
           let dotCount = 0;
+          let loadingPhase = 0; // 0: Processing, 1: Analyzing, 2: Creating thumbnail
           loadingInterval.current = setInterval(() => {
             dotCount = (dotCount + 1) % 4;
-            setLoadingText('Processing' + '.'.repeat(dotCount));
-          }, 400);
+            if (dotCount === 0) {
+              loadingPhase = (loadingPhase + 1) % 3;
+            }
+            const phases = ['Processing', 'Analyzing', 'Creating thumbnail'];
+            setLoadingText(phases[loadingPhase] + '.'.repeat(dotCount + 1));
+          }, 500);
 
           timeoutRef.current = setTimeout(() => {
             setIsProcessing(false);
@@ -85,8 +147,8 @@ export function PhotoCapture({ onExtractData, onClose }: PhotoCaptureProps) {
             });
           }, 15000);
 
-          // Process the optimized image
-          const productInfo = await processImageForManualEntry(optimizedImageData);
+          // Process the optimized image (with photo extraction setting)
+          const productInfo = await processImageForManualEntry(optimizedImageData, extractProductPhotos);
 
           if (timeoutRef.current) clearTimeout(timeoutRef.current);
           if (loadingInterval.current) clearInterval(loadingInterval.current);
@@ -96,6 +158,22 @@ export function PhotoCapture({ onExtractData, onClose }: PhotoCaptureProps) {
           (window as any).__ocrLoadingText = null;
           (window as any).__ocrIsProcessing = false;
 
+          // Create thumbnail from the actual captured image or use Gemini's product image (only if enabled)
+          let thumbnail: string | undefined;
+          
+          if (extractProductPhotos) {
+            if (productInfo.productImage) {
+              console.log('🖼️ Using Gemini-provided product image');
+              thumbnail = await createProductThumbnail(productInfo.productImage);
+            } else if (productInfo.productName && productInfo.productName.trim()) {
+              console.log('🖼️ Creating thumbnail from captured image');
+              thumbnail = await createProductThumbnail(originalImageData);
+            }
+          } else {
+            console.log('⏭️ Skipping thumbnail creation (photo extraction disabled)');
+            thumbnail = undefined;
+          }
+
           // Check if this is a per-KG product
           if (productInfo.isPerKg && productInfo.price > 0) {
             setPerKgProduct({
@@ -104,9 +182,11 @@ export function PhotoCapture({ onExtractData, onClose }: PhotoCaptureProps) {
               discount: productInfo.discount
             });
             setShowWeightDialog(true);
+            // Store thumbnail for later use
+            (window as any).__capturedThumbnail = thumbnail;
             // Don't close yet - wait for weight input
           } else {
-            onExtractData(productInfo.productName, productInfo.price, productInfo.discount);
+            onExtractData(productInfo.productName, productInfo.price, productInfo.discount, false, undefined, thumbnail);
             onClose();
           }
 
@@ -149,10 +229,14 @@ export function PhotoCapture({ onExtractData, onClose }: PhotoCaptureProps) {
 
   const handleWeightConfirm = (weight: number) => {
     if (perKgProduct) {
+      // Get the stored thumbnail
+      const thumbnail = (window as any).__capturedThumbnail;
       // For per-KG items, pass the per-KG price (not the total price)
-      onExtractData(perKgProduct.name, perKgProduct.pricePerKg, perKgProduct.discount, true, weight);
+      onExtractData(perKgProduct.name, perKgProduct.pricePerKg, perKgProduct.discount, true, weight, thumbnail);
       setShowWeightDialog(false);
       setPerKgProduct(null);
+      // Clean up stored thumbnail
+      delete (window as any).__capturedThumbnail;
       onClose();
     }
   };
@@ -160,6 +244,8 @@ export function PhotoCapture({ onExtractData, onClose }: PhotoCaptureProps) {
   const handleWeightCancel = () => {
     setShowWeightDialog(false);
     setPerKgProduct(null);
+    // Clean up stored thumbnail
+    delete (window as any).__capturedThumbnail;
     onClose();
   };
 

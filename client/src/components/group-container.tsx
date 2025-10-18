@@ -124,7 +124,7 @@ export function GroupContainer({
       
       <div
         className={cn(
-          "min-h-[100px] border-2 border-dashed border-gray-300 rounded-lg p-2 space-y-2 transition-colors",
+          "min-h-[100px] border-2 border-dashed border-gray-300 rounded-lg p-2 space-y-1 transition-colors",
           isDragOver && "bg-blue-50 border-primary"
         )}
         onDrop={handleDrop}
@@ -136,12 +136,21 @@ export function GroupContainer({
             key={item.id} 
             draggable
             onDragStart={(e) => onDragStart(e, item)}
-            className="bg-gray-50 border border-gray-200 rounded-lg p-2 cursor-move hover:bg-gray-100 transition-colors"
+            className="bg-gray-50 border border-gray-200 rounded-lg px-1.5 py-1 cursor-move hover:bg-gray-100 transition-colors"
           >
             <div className="flex items-center justify-between text-sm">
-              <span className="font-medium text-gray-900">
-                {item.name} {item.originalQuantity && item.originalQuantity > 1 && item.splitIndex ? `(${item.splitIndex}/${item.originalQuantity})` : ''}
-              </span>
+              <div className="flex items-center gap-1.5 flex-1">
+                {item.photo && (
+                  <img 
+                    src={item.photo} 
+                    alt="Item photo" 
+                    className="w-8 h-8 rounded object-cover border border-gray-200 flex-shrink-0"
+                  />
+                )}
+                <span className="font-medium text-gray-900">
+                  {item.name} {item.originalQuantity && item.originalQuantity > 1 && item.splitIndex ? `(${item.splitIndex}/${item.originalQuantity})` : ''}
+                </span>
+              </div>
               <span className="text-blue-600 font-medium">€{item.total.toFixed(2)}</span>
             </div>
           </div>

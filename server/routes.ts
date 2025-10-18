@@ -44,7 +44,7 @@ export function registerRoutes(app: express.Application) {
   // OCR endpoint (for frontend compatibility)
   app.post("/api/ocr", async (req: Request, res: Response) => {
     try {
-      const { imageData } = req.body;
+      const { imageData, extractPhoto = true } = req.body;
       
       if (!imageData) {
         return res.status(400).json({ 
@@ -54,7 +54,7 @@ export function registerRoutes(app: express.Application) {
       }
 
       const extractionService = new ExtractionService();
-      const result = await extractionService.extractProductInfo(imageData);
+      const result = await extractionService.extractProductInfo(imageData, extractPhoto);
       
       res.json(result);
       

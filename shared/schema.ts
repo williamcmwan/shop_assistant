@@ -21,6 +21,7 @@ export const shoppingItemSchema = z.object({
   onHold: z.boolean().default(false), // Whether item is on hold (excluded from total)
   isPerKg: z.boolean().default(false), // Whether item is priced per KG
   isSplittable: z.boolean().default(true), // Whether item can be split into groups
+  photo: z.string().optional(), // Base64 encoded thumbnail of captured photo
 });
 
 export const shoppingGroupSchema = z.object({

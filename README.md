@@ -1,11 +1,13 @@
-# Shop Assistant v2.1 🛒
+# Shop Assistant v2.3 🛒
 
 A modern shopping assistant application with Camera, OCR and AI price tag detection capabilities.
 
-**Latest Update**: Added Per-KG price detection with automatic weight calculation, enhanced UI with consistent blue theme, and improved user experience with Enter key support for forms.
+**Latest Update**: Added product photo thumbnails with Gemini vision extraction, configurable photo settings, and enhanced UI with optimized spacing and layout.
 
 ## ✨ Features
 
+- **🖼️ Product Photo Thumbnails** - AI-powered product image extraction from captured photos using Gemini vision, with 50x50px thumbnails displayed in lists
+- **⚙️ Configurable Photo Settings** - Enable/disable product photo extraction for faster processing, with option to clear all stored thumbnails
 - **⚖️ Per-KG Price Detection** - Auto detect price per kg items and calculate the price based on weight input with dedicated weight management dialogs
 - **�  OCR Price Tag Scanning with Multi-Purchase Discounts** - Take photos of price tags and automatically extract product information including volume discounts (3 for €10, 3 for 2, etc.)
 - **🎨 Updated Interface** - Fresh new design with consistent blue theme, improved layouts, and enhanced user experience
@@ -137,8 +139,16 @@ client/src/
 3. **Scan Price Tags**: Use the camera button to scan price tags automatically
    - **Multi-Purchase Discounts**: Automatically detects "3 for €10" or "3 for 2" offers
    - **Per-KG Detection**: Automatically detects price per kg items and prompts for weight input
+   - **Product Photo Extraction**: AI extracts product thumbnails from captured images using Gemini vision
    - **Smart Quantity Setting**: Sets quantity to discount amount for immediate savings
    - **Discount Display**: Shows discount info like "(3 for €10)" in product name
+
+### Product Photo Management
+3a. **Product Thumbnails**: 50x50px product photos displayed next to items
+   - **Automatic Extraction**: Gemini AI identifies and extracts product images from price tag photos
+   - **Visual Identification**: Quickly identify items by their product photos in lists and groups
+   - **Configurable**: Enable/disable photo extraction in Settings for faster processing
+   - **Storage Management**: Clear all product photos from Settings to free up space
 
 ### Per-KG Item Management
 4. **Add Per-KG Items**: Use the scale button to manually add items sold by weight
@@ -206,6 +216,27 @@ The application supports three extraction options:
 - **Use case**: Production environments, maximum reliability
 - **Setup**: Requires both API keys
 - **Performance**: Uses Gemini first, falls back to OCR-Space if needed
+
+### App Configuration Settings
+
+Access the Settings menu (gear icon) on the main page to configure:
+
+#### Product Photo Settings
+- **Enable/Disable Product Photos**: Toggle product photo extraction on/off
+  - When enabled: AI extracts product thumbnails from captured images
+  - When disabled: Faster processing, no photo extraction or storage
+- **Clear All Product Photos**: Remove all stored product thumbnails to free up browser storage
+  - Removes photos from all shopping lists
+  - Preserves all other item data (names, prices, quantities)
+
+#### Currency Settings
+- **Change Currency Symbol**: Customize your preferred currency symbol
+  - Common options: €, $, £, ¥
+  - Custom symbols: Enter any symbol up to 3 characters
+
+#### Data Management
+- **Clear Autocomplete**: Remove all saved item name suggestions
+- **Show App Info**: View the feature showcase splash screen
 
 ### API Setup
 
@@ -302,6 +333,7 @@ Only essential UI components remain:
 
 ### Smart Extraction
 - **AI-powered parsing** with Gemini for superior accuracy
+- **Image identification** when no text is readable - identifies products by visual appearance
 - **Pattern-based fallback** with OCR-Space for reliability
 - **Confidence scoring** to determine extraction quality
 - **Automatic fallback** when primary API fails or has low confidence

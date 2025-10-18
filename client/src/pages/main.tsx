@@ -5,7 +5,7 @@ import { storageService } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit2, Trash2, ShoppingBag, Settings, Trash, DollarSign } from "lucide-react";
+import { Plus, Edit2, Trash2, ShoppingBag, Settings, Trash, DollarSign, Image, ImageOff, Images } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -33,6 +33,8 @@ export default function MainPage() {
   const [currencySymbol, setCurrencySymbol] = useState("€");
   const [newCurrencySymbol, setNewCurrencySymbol] = useState("€");
   const [currentPage, setCurrentPage] = useState(1);
+  const [extractProductPhotos, setExtractProductPhotos] = useState(true);
+  const [showClearPhotosDialog, setShowClearPhotosDialog] = useState(false);
   const { toast } = useToast();
 
   const LISTS_PER_PAGE = 10;
@@ -47,6 +49,10 @@ export default function MainPage() {
     const savedCurrency = localStorage.getItem('currencySymbol') || '€';
     setCurrencySymbol(savedCurrency);
     setNewCurrencySymbol(savedCurrency);
+    
+    // Load product photo extraction setting
+    const savedPhotoSetting = localStorage.getItem('extractProductPhotos');
+    setExtractProductPhotos(savedPhotoSetting !== 'false'); // Default to true
   }, []);
 
   // Cleanup effect to ensure dialog state is properly managed
@@ -87,7 +93,7 @@ export default function MainPage() {
   };
 
   const handleShowSplashScreen = () => {
-    const SPLASH_VERSION = 'v2.0'; // Keep in sync with App.tsx
+    const SPLASH_VERSION = 'v2.3'; // Keep in sync with App.tsx
     localStorage.removeItem(`splashScreenShown_${SPLASH_VERSION}`);
     window.location.reload();
   };
@@ -116,6 +122,74 @@ export default function MainPage() {
   const handleCancelCurrency = () => {
     setNewCurrencySymbol(currencySymbol); // Reset to current value
     setShowCurrencyDialog(false);
+  };
+
+  const handleToggleProductPhotos = () => {
+    const newValue = !extractProductPhotos;
+    setExtractProductPhotos(newValue);
+    localStorage.setItem('extractProductPhotos', String(newValue));
+    
+    toast({
+      title: newValue ? "Product photos enabled" : "Product photos disabled",
+      description: newValue 
+        ? "Photos will be extracted from captured images" 
+        : "Photo extraction skipped for faster processing",
+      variant: "default"
+    });
+  };
+
+  const handleConfirmClearPhotos = () => {
+    // Get all lists from storage
+    const allLists = storageService.getAllLists();
+    let totalPhotosCleared = 0;
+    
+    // Remove photo field from all items in all lists
+    const updatedLists = allLists.map(list => {
+      const updatedItems = list.items.map(item => {
+        if (item.photo) {
+          totalPhotosCleared++;
+          const { photo, ...itemWithoutPhoto } = item;
+          return itemWithoutPhoto;
+        }
+        return item;
+      });
+      
+      // Also clear photos from groups if they exist
+      const updatedGroups = list.groups?.map(group => ({
+        ...group,
+        items: group.items.map(item => {
+          if (item.photo) {
+            const { photo, ...itemWithoutPhoto } = item;
+            return itemWithoutPhoto;
+          }
+          return item;
+        })
+      }));
+      
+      return {
+        ...list,
+        items: updatedItems,
+        groups: updatedGroups
+      };
+    });
+    
+    // Save all updated lists back to storage
+    updatedLists.forEach(list => {
+      storageService.saveList(list);
+    });
+    
+    // Refresh the lists display
+    const refreshedLists = storageService.getAllLists();
+    const sortedLists = refreshedLists.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    setLists(sortedLists);
+    
+    setShowClearPhotosDialog(false);
+    
+    toast({
+      title: "Product photos cleared",
+      description: `Removed ${totalPhotosCleared} product thumbnail${totalPhotosCleared !== 1 ? 's' : ''} from storage`,
+      variant: "default"
+    });
   };
 
   return (
@@ -189,6 +263,18 @@ export default function MainPage() {
               <DropdownMenuItem onClick={() => setShowCurrencyDialog(true)}>
                 <DollarSign className="mr-2 h-4 w-4" />
                 Change Currency ({currencySymbol})
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleToggleProductPhotos}>
+                {extractProductPhotos ? (
+                  <Image className="mr-2 h-4 w-4" />
+                ) : (
+                  <ImageOff className="mr-2 h-4 w-4" />
+                )}
+                {extractProductPhotos ? "Disable" : "Enable"} Product Photos
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowClearPhotosDialog(true)}>
+                <Images className="mr-2 h-4 w-4" />
+                Clear All Product Photos
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -371,6 +457,46 @@ export default function MainPage() {
               </Button>
               <Button onClick={handleChangeCurrency} disabled={!newCurrencySymbol.trim()}>
                 Save Changes
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clear Product Photos Confirmation Dialog */}
+      {showClearPhotosDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/50" 
+            onClick={() => setShowClearPhotosDialog(false)}
+          />
+          
+          {/* Modal Content */}
+          <div className="relative bg-white rounded-lg shadow-lg p-6 w-full max-w-md mx-4">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Clear All Product Photos</h2>
+              <p className="text-sm text-gray-600 mt-2">
+                This will remove all product thumbnail images from your shopping lists. 
+                The items and their details will remain, but photos will be deleted.
+              </p>
+              <p className="text-sm text-gray-600 mt-2">
+                This action cannot be undone.
+              </p>
+            </div>
+            
+            <div className="flex gap-3 justify-end">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowClearPhotosDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleConfirmClearPhotos}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Clear All Photos
               </Button>
             </div>
           </div>

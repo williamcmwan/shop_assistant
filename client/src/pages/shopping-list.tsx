@@ -12,6 +12,7 @@ import { QuantityInput } from "@/components/quantity-input";
 import { PhotoCapture } from "@/components/photo-capture";
 import { WeightEditDialog } from "@/components/weight-edit-dialog";
 import { ManualPerKgDialog } from "@/components/manual-perkg-dialog";
+
 import { ArrowLeft, Plus, Edit2, Check, X, Camera, Tag, Pause, Play, Trash2, Minus, AtSign, Calculator, Percent, Scale } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn, canApplyDiscount, toggleDiscount, calculateItemTotal } from "@/lib/utils";
@@ -29,7 +30,8 @@ export default function ShoppingListPage() {
     discountApplied: false,
     onHold: false,
     isPerKg: false,
-    isSplittable: true
+    isSplittable: true,
+    photo: undefined
   });
   // Replace targetAmount and numberOfGroups state with groupSpecs array
   const [groupSpecs, setGroupSpecs] = useState([{ targetAmount: 25, count: 2 }]);
@@ -56,6 +58,10 @@ export default function ShoppingListPage() {
   const [showManualPerKgDialog, setShowManualPerKgDialog] = useState<boolean>(false);
   // Add state for autocomplete suggestions
   const [itemNameSuggestions, setItemNameSuggestions] = useState<string[]>([]);
+  const [isAddingItem, setIsAddingItem] = useState(false);
+  
+  // For manually added items, we won't fetch images from the web
+  // Only items captured via camera will have product images
   // Add state for currency symbol
   const [currencySymbol, setCurrencySymbol] = useState("€");
 
@@ -123,7 +129,7 @@ export default function ShoppingListPage() {
     setLocation("/");
   };
 
-  const addItemToList = (itemData: InsertShoppingItem) => {
+  const addItemToList = async (itemData: InsertShoppingItem) => {
     if (!currentList || !itemData.name.trim() || itemData.price <= 0) {
       toast({
         title: "Invalid item",
@@ -132,6 +138,11 @@ export default function ShoppingListPage() {
       });
       return;
     }
+
+    setIsAddingItem(true);
+
+    // Use provided photo (only from camera capture)
+    const photo = (itemData as any).photo;
 
     // Apply discount automatically if quantity matches discount requirement
     const discountApplied = itemData.discount ? canApplyDiscount({
@@ -156,7 +167,8 @@ export default function ShoppingListPage() {
       discountApplied,
       onHold: false,
       isPerKg: itemData.isPerKg || false,
-      isSplittable: itemData.isSplittable !== false
+      isSplittable: itemData.isSplittable !== false,
+      photo: photo // Include the fetched photo thumbnail
     };
 
     const updatedList = {
@@ -173,15 +185,16 @@ export default function ShoppingListPage() {
       setItemNameSuggestions(storageService.getItemNames());
     }
 
-    setNewItem({ name: "", price: 0, quantity: 1, discountApplied: false, onHold: false, isPerKg: false, isSplittable: true });
+    setNewItem({ name: "", price: 0, quantity: 1, discountApplied: false, onHold: false, isPerKg: false, isSplittable: true, photo: undefined });
     setOcrIsProcessing(false);
     setOcrLoadingText(null);
     (window as any).__ocrLoadingText = null;
     (window as any).__ocrIsProcessing = false;
+    setIsAddingItem(false);
   };
 
-  const handleAddItem = () => {
-    addItemToList(newItem);
+  const handleAddItem = async () => {
+    await addItemToList(newItem);
   };
 
   const handleRemoveItem = (itemId: string) => {
@@ -585,8 +598,9 @@ export default function ShoppingListPage() {
     setEditingPerKgItem(null);
   };
 
-  const handleManualPerKgConfirm = (productName: string, pricePerKg: number, weight: number) => {
+  const handleManualPerKgConfirm = async (productName: string, pricePerKg: number, weight: number) => {
     const displayName = `${productName} (${weight}kg)`;
+    
     const itemData = {
       name: displayName,
       price: pricePerKg, // Store per-KG price as unit price
@@ -595,10 +609,11 @@ export default function ShoppingListPage() {
       discountApplied: false,
       onHold: false,
       isPerKg: true,
-      isSplittable: false
+      isSplittable: false,
+      photo: undefined // No photo for manually added items
     };
 
-    addItemToList(itemData);
+    await addItemToList(itemData);
     
     // Save the cleaned product name (without weight) for autocomplete
     const cleanedName = cleanItemName(productName.trim());
@@ -608,7 +623,7 @@ export default function ShoppingListPage() {
     }
     
     // Clear the main form since we used its values for the per-KG item
-    setNewItem({ name: "", price: 0, quantity: 1, discountApplied: false, onHold: false, isPerKg: false, isSplittable: true });
+    setNewItem({ name: "", price: 0, quantity: 1, discountApplied: false, onHold: false, isPerKg: false, isSplittable: true, photo: undefined });
     
     setShowManualPerKgDialog(false);
   };
@@ -803,7 +818,7 @@ export default function ShoppingListPage() {
     setDragOverGroup(null);
   };
 
-  const handlePhotoExtractData = (productName: string, price: number, discount?: { type: "bulk_price" | "buy_x_get_y"; quantity: number; value: number; display: string }, isPerKg?: boolean, weight?: number) => {
+  const handlePhotoExtractData = async (productName: string, price: number, discount?: { type: "bulk_price" | "buy_x_get_y"; quantity: number; value: number; display: string }, isPerKg?: boolean, weight?: number, photo?: string) => {
     setOcrIsProcessing(false);
     setOcrLoadingText(null);
     // Clear global window variables
@@ -827,7 +842,8 @@ export default function ShoppingListPage() {
       discountApplied: false,
       onHold: false,
       isPerKg: isPerKg || false,
-      isSplittable: !isPerKg // Per-KG items are not splittable
+      isSplittable: !isPerKg, // Per-KG items are not splittable
+      photo: photo // Add the captured photo thumbnail
     };
 
     setNewItem(itemData);
@@ -835,7 +851,7 @@ export default function ShoppingListPage() {
     // Auto-add per-KG items after weight confirmation
     if (isPerKg && weight && productName.trim() && price > 0) {
       // Directly add the item to the list
-      addItemToList(itemData);
+      await addItemToList(itemData);
     }
     // Removed toast notification to prevent blocking dialog
   };
@@ -963,7 +979,7 @@ export default function ShoppingListPage() {
               onClick={() => {
                 setPhotoCaptureKey(prev => prev + 1);
                 setShowPhotoCapture(true);
-                setNewItem({ name: "", price: 0, quantity: 1, discountApplied: false, onHold: false, isPerKg: false, isSplittable: true });
+                setNewItem({ name: "", price: 0, quantity: 1, discountApplied: false, onHold: false, isPerKg: false, isSplittable: true, photo: undefined });
               }}
               variant="outline"
               className="px-3 py-3 flex items-center justify-center w-12 shrink-0 hover:bg-blue-50 hover:border-blue-300 text-gray-600 hover:text-blue-600"
@@ -992,9 +1008,14 @@ export default function ShoppingListPage() {
             </div>
             <Button
               onClick={handleAddItem}
-              className="bg-primary text-white hover:bg-blue-800 px-4 py-3 flex items-center justify-center min-w-[44px] shrink-0"
+              disabled={isAddingItem}
+              className="bg-primary text-white hover:bg-blue-800 px-4 py-3 flex items-center justify-center min-w-[44px] shrink-0 disabled:opacity-50"
             >
-              <Plus className="h-5 w-5" />
+              {isAddingItem ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Plus className="h-5 w-5" />
+              )}
             </Button>
           </div>
         </div>
@@ -1058,12 +1079,21 @@ export default function ShoppingListPage() {
                           key={`${item.id}-unassigned-${index}`}
                           draggable
                           onDragStart={(e) => handleDragStart(e, unitItem)}
-                          className="bg-white border border-yellow-300 rounded p-2 cursor-move hover:bg-yellow-50 transition-colors"
+                          className="bg-white border border-yellow-300 rounded px-1.5 py-1 cursor-move hover:bg-yellow-50 transition-colors"
                         >
                           <div className="flex items-center justify-between text-sm">
-                            <span className="font-medium text-gray-900">
-                              {item.name} ({actualIndex}/{item.quantity})
-                            </span>
+                            <div className="flex items-center gap-1.5 flex-1">
+                              {item.photo && (
+                                <img 
+                                  src={item.photo} 
+                                  alt="Item photo" 
+                                  className="w-8 h-8 rounded object-cover border border-gray-200 flex-shrink-0"
+                                />
+                              )}
+                              <span className="font-medium text-gray-900">
+                                {item.name} ({actualIndex}/{item.quantity})
+                              </span>
+                            </div>
                             <span className="text-blue-600 font-medium">{currencySymbol}{unitPrice.toFixed(2)}</span>
                           </div>
                         </div>
@@ -1141,7 +1171,7 @@ export default function ShoppingListPage() {
                     item.onHold && "bg-gray-100 opacity-60"
                   )}>
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 w-full">
                         <Button
                           variant="ghost"
                           size="sm"
@@ -1151,9 +1181,16 @@ export default function ShoppingListPage() {
                           <Edit2 className="h-4 w-4" />
                         </Button>
                         <h4 className={cn(
-                          "font-medium",
+                          "font-medium flex-1",
                           item.onHold ? "text-gray-500" : "text-gray-900"
                         )}>{item.name}</h4>
+                        {item.photo && (
+                          <img 
+                            src={item.photo} 
+                            alt="Item photo" 
+                            className="w-12 h-12 rounded-lg object-cover border border-gray-200 -m-1 flex-shrink-0 shadow-sm"
+                          />
+                        )}
                       </div>
                       <div className="flex items-center justify-between mt-2 bg-gray-50 py-2 pb-3 -mx-3 px-3 -mb-3">
                         <div className="flex items-center space-x-4">

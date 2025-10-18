@@ -16,6 +16,13 @@ interface Feature {
 
 const features: Feature[] = [
   {
+    title: "Product Photo Thumbnails",
+    description: "AI-powered product image extraction from captured photos with 50x50px thumbnails in lists",
+    icon: "🖼️",
+    iconComponent: <Camera className="w-12 h-12" />,
+    gradient: "from-cyan-400 to-cyan-600"
+  },
+  {
     title: "Per-KG Price Detection",
     description: "Auto detect price per kg items and calculate the price based on weight input",
     icon: "⚖️",
@@ -134,7 +141,7 @@ export function SplashScreen({ onClose }: SplashScreenProps) {
   };
 
   const handleClose = () => {
-    const SPLASH_VERSION = 'v2.2'; // Keep in sync with App.tsx
+    const SPLASH_VERSION = 'v2.3'; // Keep in sync with App.tsx
     localStorage.setItem(`splashScreenShown_${SPLASH_VERSION}`, 'true');
     setFadeOut(true);
     setTimeout(() => {

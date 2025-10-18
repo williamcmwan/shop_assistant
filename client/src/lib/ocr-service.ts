@@ -11,6 +11,7 @@ export interface ProductInfo {
     display: string;
   };
   isPerKg?: boolean;
+  productImage?: string;
 }
 
 export interface ProductSuggestion {
@@ -468,9 +469,10 @@ const preprocessText = (text: string): string => {
 };
 
 // Process image using server-side extraction
-export const processImageForManualEntry = async (imageData: string): Promise<ProductInfo> => {
+export const processImageForManualEntry = async (imageData: string, extractPhoto: boolean = true): Promise<ProductInfo> => {
   try {
     console.log("Processing image with server-side extraction...");
+    console.log(`📸 Photo extraction: ${extractPhoto ? 'enabled' : 'disabled (faster)'}`);
     
     // Call server-side extraction endpoint
     const response = await fetch('/api/ocr', {
@@ -478,7 +480,7 @@ export const processImageForManualEntry = async (imageData: string): Promise<Pro
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ imageData })
+      body: JSON.stringify({ imageData, extractPhoto })
     });
     
     if (!response.ok) {
@@ -504,12 +506,18 @@ export const processImageForManualEntry = async (imageData: string): Promise<Pro
         }
       }
       
+      // Special handling for image identification (product name found but no price)
+      if (result.productName && result.price === 0 && result.confidence > 0.2) {
+        console.log("🖼️ Product identified from image without price text:", result.productName);
+      }
+      
       const productInfo = {
         productName: result.productName || "",
         price: result.price || 0,
         confidence: result.confidence || 0.5,
         discount: result.discount,
-        isPerKg: result.isPerKg
+        isPerKg: result.isPerKg,
+        productImage: result.productImage
       };
       
       return productInfo;
