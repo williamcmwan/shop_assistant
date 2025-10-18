@@ -56,26 +56,37 @@ export class GeminiService {
         contents: [{
           parts: [
             {
-              text: `Extract product info from this price tag image as JSON:
+              text: `Analyze this image and extract product information as JSON.
 
-Extract:
-- productName: Clean name (no store names/barcodes), include weight if shown (e.g. "650GM")
-- price: Main euro amount (prefer "NOW"/"ONLY", convert "40c" to 0.40)
-- isPerKg: true ONLY if "PER KG" appears WITHOUT a specific weight/total price
-  - If weight (e.g. "650GM") AND total price shown: isPerKg=false (already weighed)
-  - If only "PER KG" with price: isPerKg=true (needs weighing)
-- discount: Only for multi-buy offers like "3 for €10" or "3 for 2"
-  - type: "bulk_price" or "buy_x_get_y"
-  - quantity, value, display: "(3 for €10.00)"
-- confidence: 0.8-1.0 for clear text, 0.3-0.6 for visual-only
+CRITICAL: You MUST identify the product, even without text!
 
-Rules:
-- Ignore "per kg" reference prices like "€1.68 per kg" - NOT the main price
-- Ignore unit prices like "(€1.59 each)" - NOT discounts
-- If no text: identify visually, price=0, lower confidence
-- Return only JSON
+productName (REQUIRED - NEVER leave empty):
+- If text visible: Extract clean name (no store names/barcodes), include weight (e.g. "650GM")
+- If NO readable text: Identify product by what you SEE:
+  * Red can with white logo → "Coca Cola"
+  * Yellow curved fruit → "Bananas"
+  * Red round vegetables → "Tomatoes"
+  * Orange root vegetables → "Carrots"
+  * White/blue carton → "Milk"
+  * Brown loaf → "Bread"
+  * Cheese package → "Cheese"
+  * Look at: shape, color, packaging, brand logos, product type
 
-Example: {"productName":"Carrot Tray 650GM","price":1.09,"confidence":0.9,"isPerKg":false}`
+price:
+- Main euro amount (prefer "NOW"/"ONLY", convert "40c" to 0.40)
+- If no price: set to 0
+
+isPerKg:
+- true ONLY if "PER KG" text WITHOUT specific weight/total price
+- false if weight (e.g. "650GM") AND total price shown
+
+discount (look for multi-buy offers in large text/colored backgrounds):
+- "3 for 2" → {"type":"buy_x_get_y","quantity":3,"value":2,"display":"(3 for 2)"}
+- "2 for €3" → {"type":"bulk_price","quantity":2,"value":3.0,"display":"(2 for €3.00)"}
+
+confidence: 0.8-1.0 (text), 0.4-0.6 (visual only)
+
+Return JSON only: {"productName":"[REQUIRED]","price":0,"confidence":0.5}`
             },
             {
               inline_data: {
