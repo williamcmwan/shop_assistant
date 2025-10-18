@@ -55,6 +55,7 @@ export function WeightInputDialog({ productName, pricePerKg, onConfirm, onCancel
             </label>
             <Input
               type="number"
+              inputMode="decimal"
               value={weight}
               onChange={(e) => setWeight(Number(e.target.value))}
               placeholder="1.0"

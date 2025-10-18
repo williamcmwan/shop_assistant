@@ -1010,6 +1010,7 @@ export default function ShoppingListPage() {
           <div className="flex gap-2">
             <Input
               type="number"
+              inputMode="decimal"
               value={newItem.price || ""}
               onChange={(e) => setNewItem(prev => ({ ...prev, price: Number(e.target.value) }))}
               placeholder={`${currencySymbol}0.00`}
@@ -1148,6 +1149,7 @@ export default function ShoppingListPage() {
                           <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">{currencySymbol}</span>
                           <Input
                             type="number"
+                            inputMode="decimal"
                             value={editForm.price}
                             onChange={(e) => setEditForm(prev => ({ ...prev, price: Number(e.target.value) }))}
                             placeholder="0.00"
@@ -1389,6 +1391,7 @@ export default function ShoppingListPage() {
                   <div className="w-32">
                     <Input
                       type="number"
+                      inputMode="decimal"
                       value={spec.targetAmount}
                       onChange={(e) => {
                         const newSpecs = [...groupSpecs];

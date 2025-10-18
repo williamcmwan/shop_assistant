@@ -70,6 +70,7 @@ export function ManualPerKgDialog({ onConfirm, onCancel, suggestions, initialPro
             </label>
             <Input
               type="number"
+              inputMode="decimal"
               value={pricePerKg || ""}
               onChange={(e) => setPricePerKg(Number(e.target.value))}
               placeholder="0.00"
@@ -86,6 +87,7 @@ export function ManualPerKgDialog({ onConfirm, onCancel, suggestions, initialPro
             </label>
             <Input
               type="number"
+              inputMode="decimal"
               value={weight}
               onChange={(e) => setWeight(Number(e.target.value))}
               placeholder="1.0"

@@ -78,6 +78,7 @@ export function WeightEditDialog({
             </label>
             <Input
               type="number"
+              inputMode="decimal"
               value={editedPricePerKg}
               onChange={(e) => setEditedPricePerKg(Number(e.target.value))}
               placeholder="0.00"
@@ -94,6 +95,7 @@ export function WeightEditDialog({
             </label>
             <Input
               type="number"
+              inputMode="decimal"
               value={weight}
               onChange={(e) => setWeight(Number(e.target.value))}
               placeholder="1.0"

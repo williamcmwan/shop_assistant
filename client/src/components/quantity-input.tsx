@@ -50,6 +50,7 @@ export function QuantityInput({
       
       <Input
         type="number"
+        inputMode="numeric"
         value={value}
         onChange={handleInputChange}
         min={min}

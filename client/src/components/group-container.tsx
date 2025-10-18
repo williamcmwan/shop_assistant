@@ -73,6 +73,7 @@ export function GroupContainer({
               <span className="text-xs text-gray-600">Target:</span>
               <Input
                 type="number"
+                inputMode="decimal"
                 value={editTargetValue}
                 onChange={(e) => setEditTargetValue(Number(e.target.value))}
                 step="0.01"
