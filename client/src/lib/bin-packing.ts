@@ -24,22 +24,22 @@ export class BinPackingAlgorithm {
     numberOfGroups: number
   ): ShoppingGroup[] {
     // Create individual units from items with quantities > 1
-    // Don't split items with applied discounts - they must stay together
+    // Don't split items with applied discounts or non-splittable items - they must stay together
     const individualItems: BinPackingItem[] = [];
     
     items.forEach(item => {
-      // Don't split items with applied discounts - treat as single unit
-      if (item.discount && item.discountApplied) {
+      // Don't split items with applied discounts or non-splittable items - treat as single unit
+      if ((item.discount && item.discountApplied) || !item.isSplittable) {
         individualItems.push({
           id: item.id,
           value: item.total,
           item: {
             ...item,
-            // Keep original properties for discounted items
+            // Keep original properties for non-splittable items
           }
         });
       } else {
-        // Split non-discounted items into individual units
+        // Split splittable, non-discounted items into individual units
         const unitPrice = item.price;
         for (let i = 0; i < item.quantity; i++) {
           individualItems.push({
@@ -112,22 +112,22 @@ export class BinPackingAlgorithm {
     numberOfGroups: number
   ): ShoppingGroup[] {
     // Create individual units from items with quantities > 1
-    // Don't split items with applied discounts - they must stay together
+    // Don't split items with applied discounts or non-splittable items - they must stay together
     const individualItems: BinPackingItem[] = [];
     
     items.forEach(item => {
-      // Don't split items with applied discounts - treat as single unit
-      if (item.discount && item.discountApplied) {
+      // Don't split items with applied discounts or non-splittable items - treat as single unit
+      if ((item.discount && item.discountApplied) || !item.isSplittable) {
         individualItems.push({
           id: item.id,
           value: item.total,
           item: {
             ...item,
-            // Keep original properties for discounted items
+            // Keep original properties for non-splittable items
           }
         });
       } else {
-        // Split non-discounted items into individual units
+        // Split splittable, non-discounted items into individual units
         const unitPrice = item.price;
         for (let i = 0; i < item.quantity; i++) {
           individualItems.push({
@@ -238,20 +238,20 @@ export class BinPackingAlgorithm {
     }
 
     // Convert items to individual units
-    // Don't split items with applied discounts - they must stay together
+    // Don't split items with applied discounts or non-splittable items - they must stay together
     const individualItems: { item: ShoppingItem; value: number }[] = [];
     for (const item of items) {
-      // Don't split items with applied discounts - treat as single unit
-      if (item.discount && item.discountApplied) {
+      // Don't split items with applied discounts or non-splittable items - treat as single unit
+      if ((item.discount && item.discountApplied) || !item.isSplittable) {
         individualItems.push({
           item: {
             ...item,
-            // Keep original properties for discounted items
+            // Keep original properties for non-splittable items
           },
           value: item.total
         });
       } else {
-        // Split non-discounted items into individual units
+        // Split splittable, non-discounted items into individual units
         for (let i = 0; i < item.quantity; i++) {
           const unitPrice = item.total / item.quantity;
           individualItems.push({
@@ -506,9 +506,10 @@ export class BinPackingAlgorithm {
               const itemA = groupA.items[itemAIdx];
               const itemB = groupB.items[itemBIdx];
               
-              // Don't swap discounted items - they must stay together to maintain discount integrity
+              // Don't swap discounted items or non-splittable items - they must stay together
               if ((itemA.discount && itemA.discountApplied) || 
-                  (itemB.discount && itemB.discountApplied)) {
+                  (itemB.discount && itemB.discountApplied) ||
+                  !itemA.isSplittable || !itemB.isSplittable) {
                 continue;
               }
               
@@ -551,8 +552,8 @@ export class BinPackingAlgorithm {
             for (let itemIdx = 0; itemIdx < sourceGroup.items.length; itemIdx++) {
               const item = sourceGroup.items[itemIdx];
               
-              // Don't move discounted items
-              if (item.discount && item.discountApplied) {
+              // Don't move discounted items or non-splittable items
+              if ((item.discount && item.discountApplied) || !item.isSplittable) {
                 continue;
               }
               
@@ -597,8 +598,8 @@ export class BinPackingAlgorithm {
             let bestImprovement = 0;
             
             for (const item of overGroup.items) {
-              // Don't move discounted items
-              if (item.discount && item.discountApplied) {
+              // Don't move discounted items or non-splittable items
+              if ((item.discount && item.discountApplied) || !item.isSplittable) {
                 continue;
               }
               
@@ -662,9 +663,10 @@ function tryRearrange(groups: ShoppingGroup[], allItems: ShoppingItem[], depth =
           const itemA = underGroup.items[m];
           const itemB = overGroup.items[n];
           
-          // Don't swap discounted items - they must stay together to maintain discount integrity
+          // Don't swap discounted items or non-splittable items - they must stay together
           if ((itemA.discount && itemA.discountApplied) || 
-              (itemB.discount && itemB.discountApplied)) {
+              (itemB.discount && itemB.discountApplied) ||
+              !itemA.isSplittable || !itemB.isSplittable) {
             continue;
           }
           

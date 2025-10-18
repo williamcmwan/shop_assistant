@@ -18,6 +18,7 @@ export interface ExtractionResult {
     value: number;
     display: string;
   };
+  isPerKg?: boolean;
 }
 
 export class ExtractionService {
@@ -104,7 +105,8 @@ export class ExtractionService {
       backend: 'ocr',
       error: result.error,
       rawResponse: result.rawResponse,
-      discount: result.discount
+      discount: result.discount,
+      isPerKg: result.isPerKg
     };
   }
 
@@ -125,7 +127,8 @@ export class ExtractionService {
       backend: 'gemini',
       error: result.error,
       rawResponse: result.rawResponse,
-      discount: result.discount
+      discount: result.discount,
+      isPerKg: result.isPerKg
     };
   }
 
@@ -148,7 +151,8 @@ export class ExtractionService {
         confidence: geminiResult.confidence,
         backend: 'gemini',
         rawResponse: geminiResult.rawResponse,
-        discount: geminiResult.discount
+        discount: geminiResult.discount,
+        isPerKg: geminiResult.isPerKg
       };
     }
     
@@ -166,6 +170,7 @@ export class ExtractionService {
       fallbackReason: geminiResult.error || `Low confidence: ${geminiResult.confidence}`,
       error: ocrResult.error,
       discount: ocrResult.discount || geminiResult.discount, // Use OCR discount if available, otherwise Gemini
+      isPerKg: ocrResult.isPerKg || geminiResult.isPerKg, // Use OCR isPerKg if available, otherwise Gemini
       rawResponse: {
         gemini: geminiResult.rawResponse,
         ocr: ocrResult.rawResponse

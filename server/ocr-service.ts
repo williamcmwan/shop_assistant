@@ -15,6 +15,7 @@ export interface OCRExtractionResult {
     value: number;
     display: string;
   };
+  isPerKg?: boolean;
 }
 
 export class OCRService {
@@ -90,6 +91,7 @@ export class OCRService {
           price: parsed.price,
           confidence: confidence,
           discount: parsed.discount,
+          isPerKg: parsed.isPerKg,
           rawResponse: result
         };
       } else {
@@ -192,7 +194,7 @@ export class OCRService {
   }
 
   // Reuse the existing parsing logic from the client
-  private parseProductInfo(text: string): { productName: string; price: number; discount?: { type: "bulk_price" | "buy_x_get_y", quantity: number, value: number, display: string } } {
+  private parseProductInfo(text: string): { productName: string; price: number; discount?: { type: "bulk_price" | "buy_x_get_y", quantity: number, value: number, display: string }; isPerKg?: boolean } {
     console.log("=== Starting OCR Text Parsing ===");
     console.log("Original text:", text);
     
@@ -201,6 +203,12 @@ export class OCRService {
     
     const lines = cleanedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
     console.log("Lines after splitting:", lines);
+
+    // Detect per-KG pricing
+    const isPerKg = /per\s*kg|\/\s*kg|per\s*kilo/i.test(text);
+    if (isPerKg) {
+      console.log("Per-KG pricing detected");
+    }
 
     // Detect discount information
     const discount = this.detectDiscount(text);
@@ -233,9 +241,7 @@ export class OCRService {
 
     // Collect all price matches
     lines.forEach((line, index) => {
-      // Skip lines with unit prices or non-euro currencies
-      const lowerLine = line.toLowerCase();
-      if (/(per\s*kg|per\s*litre|per\s*l|per\s*unit|each|per\s*piece|per\s*item)/.test(lowerLine)) return;
+      // Skip lines with non-euro currencies, but allow per-kg pricing
       if (/£|\$/.test(line)) return;
       
       pricePatterns.forEach((pattern, patternIndex) => {
@@ -247,19 +253,19 @@ export class OCRService {
           let isWas = false;
           
           if (match[0] &&
-              /\d+[.,]\d{2}/.test(match[0]) &&
+              (/\d+[.,]\d{2}/.test(match[0]) || /\d+[cC]/.test(match[0])) &&
               !/\d+[.,]\d{2}\//.test(match[0])) {
             if (patternIndex === 1 || patternIndex === 11) { // NOW 40c or WAS 40c
               priceValue = parseInt(match[1], 10) / 100;
-            } else if (patternIndex === 9) { // "€ 11 25"
+            } else if (patternIndex === 8) { // "€ 2 99" format
               priceStr = `${match[1]}.${match[2]}`;
               priceValue = parseFloat(priceStr);
             } else {
               priceStr = match[1] && match[1].replace(',', '.');
               priceValue = parseFloat(priceStr);
             }
-            if (patternIndex <= 2 || patternIndex === 9 || patternIndex === 10) isNow = /now/i.test(line);
-            if (patternIndex >= 11) isWas = /was/i.test(line);
+            if (patternIndex <= 2 || patternIndex === 8 || patternIndex === 9) isNow = /now/i.test(line);
+            if (patternIndex >= 10) isWas = /was/i.test(line);
             if (priceValue > 0.01 && priceValue < 1000) {
               allPriceMatches.push({
                 price: priceValue,
@@ -353,11 +359,17 @@ export class OCRService {
     if (discount) {
       console.log("Discount:", discount);
     }
+    if (isPerKg) {
+      console.log("Per-KG pricing:", isPerKg);
+    }
     console.log("===================");
     
-    const result: { productName: string; price: number; discount?: { type: "bulk_price" | "buy_x_get_y", quantity: number, value: number, display: string } } = { productName, price };
+    const result: { productName: string; price: number; discount?: { type: "bulk_price" | "buy_x_get_y", quantity: number, value: number, display: string }; isPerKg?: boolean } = { productName, price };
     if (discount) {
       result.discount = discount;
+    }
+    if (isPerKg) {
+      result.isPerKg = isPerKg;
     }
     return result;
   }

@@ -10,7 +10,9 @@ import { ShoppingItemComponent } from "@/components/shopping-item";
 import { GroupContainer } from "@/components/group-container";
 import { QuantityInput } from "@/components/quantity-input";
 import { PhotoCapture } from "@/components/photo-capture";
-import { ArrowLeft, Plus, Edit2, Check, X, Camera, Tag, Pause, Play, Trash2, Minus, AtSign, Calculator, Percent } from "lucide-react";
+import { WeightEditDialog } from "@/components/weight-edit-dialog";
+import { ManualPerKgDialog } from "@/components/manual-perkg-dialog";
+import { ArrowLeft, Plus, Edit2, Check, X, Camera, Tag, Pause, Play, Trash2, Minus, AtSign, Calculator, Percent, Scale } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn, canApplyDiscount, toggleDiscount, calculateItemTotal } from "@/lib/utils";
 
@@ -25,7 +27,9 @@ export default function ShoppingListPage() {
     price: 0,
     quantity: 1,
     discountApplied: false,
-    onHold: false
+    onHold: false,
+    isPerKg: false,
+    isSplittable: true
   });
   // Replace targetAmount and numberOfGroups state with groupSpecs array
   const [groupSpecs, setGroupSpecs] = useState([{ targetAmount: 25, count: 2 }]);
@@ -45,6 +49,11 @@ export default function ShoppingListPage() {
   // Add state for OCR loading text
   const [ocrLoadingText, setOcrLoadingText] = useState<string | null>(null);
   const [ocrIsProcessing, setOcrIsProcessing] = useState(false);
+  // Add state for weight edit dialog
+  const [showWeightEditDialog, setShowWeightEditDialog] = useState<boolean>(false);
+  const [editingPerKgItem, setEditingPerKgItem] = useState<ShoppingItem | null>(null);
+  // Add state for manual per-KG dialog
+  const [showManualPerKgDialog, setShowManualPerKgDialog] = useState<boolean>(false);
   // Add state for autocomplete suggestions
   const [itemNameSuggestions, setItemNameSuggestions] = useState<string[]>([]);
   // Add state for currency symbol
@@ -83,9 +92,10 @@ export default function ShoppingListPage() {
     storageService.updateList(updatedList);
   };
 
-  // Function to clean item name by removing discount information
+  // Function to clean item name by removing discount information and weight
   const cleanItemName = (itemName: string): string => {
     // Remove discount patterns like "(3 for €10)", "(3 for 2)", "(Buy 2 get 1)", etc.
+    // Also remove weight patterns like "(0.25kg)", "(1.5kg)", etc.
     return itemName
       .replace(/\s*\([^)]*for[^)]*\)/gi, '') // Remove "(X for Y)" patterns
       .replace(/\s*\(buy[^)]*get[^)]*\)/gi, '') // Remove "(buy X get Y)" patterns
@@ -93,6 +103,7 @@ export default function ShoppingListPage() {
       .replace(/\s*\([^)]*\$[^)]*\)/gi, '') // Remove any pattern with dollar signs
       .replace(/\s*\([^)]*£[^)]*\)/gi, '') // Remove any pattern with pound signs
       .replace(/\s*\([^)]*¥[^)]*\)/gi, '') // Remove any pattern with yen signs
+      .replace(/\s*\([0-9.]+kg\)/gi, '') // Remove weight patterns like "(0.25kg)"
       .trim();
   };
 
@@ -112,8 +123,8 @@ export default function ShoppingListPage() {
     setLocation("/");
   };
 
-  const handleAddItem = () => {
-    if (!currentList || !newItem.name.trim() || newItem.price <= 0) {
+  const addItemToList = (itemData: InsertShoppingItem) => {
+    if (!currentList || !itemData.name.trim() || itemData.price <= 0) {
       toast({
         title: "Invalid item",
         description: "Please enter a valid item name and price.",
@@ -123,27 +134,29 @@ export default function ShoppingListPage() {
     }
 
     // Apply discount automatically if quantity matches discount requirement
-    const discountApplied = newItem.discount ? canApplyDiscount({
-      ...newItem,
+    const discountApplied = itemData.discount ? canApplyDiscount({
+      ...itemData,
       discountApplied: false
     } as ShoppingItem) : false;
 
     const item: ShoppingItem = {
       id: `item-${Date.now()}`,
-      name: newItem.name.trim(),
-      price: Number(newItem.price),
-      quantity: newItem.quantity,
-      total: newItem.discount && discountApplied ?
+      name: itemData.name.trim(),
+      price: Number(itemData.price),
+      quantity: itemData.quantity,
+      total: itemData.discount && discountApplied ?
         calculateItemTotal({
-          ...newItem,
+          ...itemData,
           discountApplied: true,
           id: `temp-${Date.now()}`,
           total: 0
         } as ShoppingItem) :
-        Number((newItem.price * newItem.quantity).toFixed(2)),
-      discount: newItem.discount,
+        Number((itemData.price * itemData.quantity).toFixed(2)), // For per-KG: per-KG price × weight
+      discount: itemData.discount,
       discountApplied,
-      onHold: false
+      onHold: false,
+      isPerKg: itemData.isPerKg || false,
+      isSplittable: itemData.isSplittable !== false
     };
 
     const updatedList = {
@@ -154,17 +167,21 @@ export default function ShoppingListPage() {
     updateList(updatedList);
 
     // Save the new item name for autocomplete (cleaned)
-    const cleanedName = cleanItemName(newItem.name.trim());
+    const cleanedName = cleanItemName(itemData.name.trim());
     if (cleanedName) {
       storageService.addItemName(cleanedName);
       setItemNameSuggestions(storageService.getItemNames());
     }
 
-    setNewItem({ name: "", price: 0, quantity: 1, discountApplied: false, onHold: false });
+    setNewItem({ name: "", price: 0, quantity: 1, discountApplied: false, onHold: false, isPerKg: false, isSplittable: true });
     setOcrIsProcessing(false);
     setOcrLoadingText(null);
     (window as any).__ocrLoadingText = null;
     (window as any).__ocrIsProcessing = false;
+  };
+
+  const handleAddItem = () => {
+    addItemToList(newItem);
   };
 
   const handleRemoveItem = (itemId: string) => {
@@ -281,7 +298,7 @@ export default function ShoppingListPage() {
       });
       return;
     }
-    // Filter out items that are on hold
+    // Filter out items that are on hold (but include per-KG items as whole units)
     const itemsToSplit = currentList.items.filter(item => !item.onHold);
 
     if (itemsToSplit.length === 0) {
@@ -336,14 +353,21 @@ export default function ShoppingListPage() {
   };
 
   const handleEditItem = (item: ShoppingItem) => {
-    setEditingItem(item.id);
-    setEditForm({
-      name: item.name,
-      price: item.price,
-      quantity: item.quantity,
-      discountApplied: item.discountApplied,
-      onHold: item.onHold
-    });
+    if (item.isPerKg) {
+      // For per-KG items, show weight edit dialog
+      setEditingPerKgItem(item);
+      setShowWeightEditDialog(true);
+    } else {
+      // For regular items, show normal edit form
+      setEditingItem(item.id);
+      setEditForm({
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        discountApplied: item.discountApplied,
+        onHold: item.onHold
+      });
+    }
   };
 
   const handleSaveEdit = (itemId: string) => {
@@ -493,8 +517,116 @@ export default function ShoppingListPage() {
     setEditingItem(null);
   };
 
+  const handleWeightEditConfirm = (productName: string, pricePerKg: number, weight: number, newTotal: number) => {
+    if (!currentList || !editingPerKgItem) return;
+
+    const newName = `${productName} (${weight}kg)`;
+
+    // Calculate the correct total: per-KG price × weight
+    const calculatedTotal = Number((pricePerKg * weight).toFixed(2));
+
+    const updatedItems = currentList.items.map(item => {
+      if (item.id === editingPerKgItem.id) {
+        return {
+          ...item,
+          name: newName,
+          price: pricePerKg, // Update the per-KG price
+          quantity: weight,
+          total: calculatedTotal
+        };
+      }
+      return item;
+    });
+
+    // Also update item in groups if it exists
+    const updatedGroups = currentList.groups?.map(group => ({
+      ...group,
+      items: group.items.map(item => {
+        if (item.id === editingPerKgItem.id) {
+          return {
+            ...item,
+            name: newName,
+            price: pricePerKg, // Update the per-KG price in groups too
+            quantity: weight,
+            total: calculatedTotal
+          };
+        }
+        return item;
+      }),
+      total: Number(group.items.map(item => {
+        if (item.id === editingPerKgItem.id) {
+          return calculatedTotal;
+        }
+        return item.total;
+      }).reduce((sum, total) => sum + total, 0).toFixed(2))
+    }));
+
+    const updatedList = {
+      ...currentList,
+      items: updatedItems,
+      groups: updatedGroups
+    };
+
+    updateList(updatedList);
+    
+    // Save the cleaned product name (without weight) for autocomplete
+    const cleanedName = cleanItemName(productName.trim());
+    if (cleanedName) {
+      storageService.addItemName(cleanedName);
+      setItemNameSuggestions(storageService.getItemNames());
+    }
+    
+    setShowWeightEditDialog(false);
+    setEditingPerKgItem(null);
+  };
+
+  const handleWeightEditCancel = () => {
+    setShowWeightEditDialog(false);
+    setEditingPerKgItem(null);
+  };
+
+  const handleManualPerKgConfirm = (productName: string, pricePerKg: number, weight: number) => {
+    const displayName = `${productName} (${weight}kg)`;
+    const itemData = {
+      name: displayName,
+      price: pricePerKg, // Store per-KG price as unit price
+      quantity: weight, // Store weight as quantity
+      discount: undefined,
+      discountApplied: false,
+      onHold: false,
+      isPerKg: true,
+      isSplittable: false
+    };
+
+    addItemToList(itemData);
+    
+    // Save the cleaned product name (without weight) for autocomplete
+    const cleanedName = cleanItemName(productName.trim());
+    if (cleanedName) {
+      storageService.addItemName(cleanedName);
+      setItemNameSuggestions(storageService.getItemNames());
+    }
+    
+    // Clear the main form since we used its values for the per-KG item
+    setNewItem({ name: "", price: 0, quantity: 1, discountApplied: false, onHold: false, isPerKg: false, isSplittable: true });
+    
+    setShowManualPerKgDialog(false);
+  };
+
+  const handleManualPerKgCancel = () => {
+    setShowManualPerKgDialog(false);
+  };
+
   const handleQuantityChange = (itemId: string, newQuantity: number) => {
     if (!currentList) return;
+
+    // Find the item to check if it's per-KG
+    const item = currentList.items.find(i => i.id === itemId);
+    if (item?.isPerKg) {
+      // For per-KG items, redirect to weight edit dialog instead of using quantity buttons
+      handleEditItem(item);
+      return;
+    }
 
     // If quantity is 0 or less, remove the item
     if (newQuantity <= 0) {
@@ -671,7 +803,7 @@ export default function ShoppingListPage() {
     setDragOverGroup(null);
   };
 
-  const handlePhotoExtractData = (productName: string, price: number, discount?: { type: "bulk_price" | "buy_x_get_y"; quantity: number; value: number; display: string }) => {
+  const handlePhotoExtractData = (productName: string, price: number, discount?: { type: "bulk_price" | "buy_x_get_y"; quantity: number; value: number; display: string }, isPerKg?: boolean, weight?: number) => {
     setOcrIsProcessing(false);
     setOcrLoadingText(null);
     // Clear global window variables
@@ -679,16 +811,32 @@ export default function ShoppingListPage() {
     (window as any).__ocrIsProcessing = false;
 
     // Add discount information to product name if detected
-    const displayName = discount ? `${productName.trim()} ${discount.display}` : productName.trim();
+    let displayName = productName.trim();
+    if (discount) {
+      displayName += ` ${discount.display}`;
+    }
+    if (isPerKg && weight) {
+      displayName += ` (${weight}kg)`;
+    }
 
-    setNewItem({
+    const itemData = {
       name: displayName || "", // If no product name found, keep it empty
-      price: price,
-      quantity: discount ? discount.quantity : 1, // Set quantity to discount quantity if available
+      price: price, // For per-KG items, this is the per-KG price
+      quantity: discount ? discount.quantity : (weight || 1), // Use weight as quantity for per-KG items
       discount: discount,
       discountApplied: false,
-      onHold: false
-    });
+      onHold: false,
+      isPerKg: isPerKg || false,
+      isSplittable: !isPerKg // Per-KG items are not splittable
+    };
+
+    setNewItem(itemData);
+
+    // Auto-add per-KG items after weight confirmation
+    if (isPerKg && weight && productName.trim() && price > 0) {
+      // Directly add the item to the list
+      addItemToList(itemData);
+    }
     // Removed toast notification to prevent blocking dialog
   };
 
@@ -739,7 +887,15 @@ export default function ShoppingListPage() {
 
   const unassignedItems = currentList.isSplitMode && currentList.groups
     ? currentList.items.filter(item => {
-      // Check if this original item is fully represented in groups
+      // For per-KG items (non-splittable), check if the whole item is in any group
+      if (!item.isSplittable) {
+        const isInGroups = currentList.groups?.some(group => 
+          group.items.some(groupItem => groupItem.id === item.id)
+        ) || false;
+        return !isInGroups;
+      }
+
+      // For splittable items, check if the total quantity is fully represented in groups
       const totalInGroups = currentList.groups?.reduce((total, group) => {
         const matchingItems = group.items.filter(groupItem =>
           groupItem.id.startsWith(item.id + '-') || groupItem.id === item.id
@@ -796,10 +952,18 @@ export default function ShoppingListPage() {
               />
             </div>
             <Button
+              onClick={() => setShowManualPerKgDialog(true)}
+              variant="outline"
+              className="px-3 py-3 flex items-center justify-center w-12 shrink-0 hover:bg-green-50 hover:border-green-300 text-gray-600 hover:text-green-600"
+              title="Add per-KG item manually"
+            >
+              <Scale className="h-4 w-4" />
+            </Button>
+            <Button
               onClick={() => {
                 setPhotoCaptureKey(prev => prev + 1);
                 setShowPhotoCapture(true);
-                setNewItem({ name: "", price: 0, quantity: 1, discountApplied: false, onHold: false });
+                setNewItem({ name: "", price: 0, quantity: 1, discountApplied: false, onHold: false, isPerKg: false, isSplittable: true });
               }}
               variant="outline"
               className="px-3 py-3 flex items-center justify-center w-12 shrink-0 hover:bg-blue-50 hover:border-blue-300 text-gray-600 hover:text-blue-600"
@@ -976,23 +1140,23 @@ export default function ShoppingListPage() {
                     "bg-white border border-gray-200 rounded-lg p-3 mb-2 shadow-sm",
                     item.onHold && "bg-gray-100 opacity-60"
                   )}>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditItem(item)}
-                            className="text-blue-600 hover:bg-blue-50 p-1"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <h4 className={cn(
-                            "font-medium",
-                            item.onHold ? "text-gray-500" : "text-gray-900"
-                          )}>{item.name}</h4>
-                        </div>
-                        <div className="flex items-center space-x-4 mt-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditItem(item)}
+                          className="text-blue-600 hover:bg-blue-50 p-1"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <h4 className={cn(
+                          "font-medium",
+                          item.onHold ? "text-gray-500" : "text-gray-900"
+                        )}>{item.name}</h4>
+                      </div>
+                      <div className="flex items-center justify-between mt-2 bg-gray-50 py-2 pb-3 -mx-3 px-3 -mb-3">
+                        <div className="flex items-center space-x-4">
                           <div className="flex items-center gap-1">
                             <AtSign className="h-4 w-4 text-black" />
                             <span className="text-base font-medium text-gray-700">{currencySymbol}{item.price.toFixed(2)}</span>
@@ -1005,57 +1169,100 @@ export default function ShoppingListPage() {
                             )}>
                               {currencySymbol}{item.total.toFixed(2)}
                             </span>
-                            {item.discount && (
-                              <div className="ml-1" title={`Discount: ${item.discount.display}`}>
-                                <Tag className="h-4 w-4 text-blue-600" />
-                              </div>
-                            )}
+                            <div className="flex items-center ml-1">
+                              {item.discount && (
+                                <div className="p-1" title={`Discount: ${item.discount.display}`}>
+                                  <Tag className="h-4 w-4 text-blue-600" />
+                                </div>
+                              )}
+                              {item.isPerKg && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEditItem(item)}
+                                  className="p-1 text-blue-600 hover:bg-blue-50"
+                                  title="Per KG item - Click to edit weight"
+                                >
+                                  <Scale className="h-4 w-4" />
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleToggleHold(item.id)}
+                                className={cn(
+                                  "p-1",
+                                  item.onHold
+                                    ? "text-red-600 hover:bg-red-50"
+                                    : "text-red-600 hover:bg-red-50"
+                                )}
+                                title={item.onHold ? "Resume item" : "Hold item"}
+                              >
+                                {item.onHold ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center">
+                        {item.isPerKg ? (
+                          // For per-KG items: Delete → Weight → Scale (gray theme like regular items)
+                          <div className="flex items-center bg-gray-100 rounded-full">
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleToggleHold(item.id)}
-                              className={cn(
-                                "p-1 ml-1",
-                                item.onHold
-                                  ? "text-red-600 hover:bg-red-50"
-                                  : "text-red-600 hover:bg-red-50"
-                              )}
-                              title={item.onHold ? "Resume item" : "Hold item"}
+                              onClick={() => handleRemoveItem(item.id)}
+                              className="w-8 h-8 rounded-full p-0 border-2 border-gray-300 bg-white hover:border-gray-500 hover:bg-gray-50"
+                              title="Remove item"
                             >
-                              {item.onHold ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+                              <Trash2 className="h-4 w-4 text-black" />
+                            </Button>
+                            <div className="bg-gray-100 px-2 py-1">
+                              <span className="text-sm font-medium text-black">
+                                {item.quantity}
+                              </span>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditItem(item)}
+                              className="w-8 h-8 rounded-full p-0 border-2 border-gray-300 bg-white hover:border-gray-500 hover:bg-gray-50"
+                              title="Edit weight"
+                            >
+                              <Scale className="h-4 w-4 text-black" />
                             </Button>
                           </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center ml-2">
-                        <div className="flex items-center bg-gray-100 rounded-full">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                            className="w-8 h-8 rounded-full p-0 border-2 border-gray-300 bg-white hover:border-gray-500 hover:bg-gray-50"
-                            title="Decrease quantity (0 removes item)"
-                          >
-                            {item.quantity === 1 ? (
-                              <Trash2 className="h-4 w-4 text-black" />
-                            ) : (
-                              <Minus className="h-4 w-4 text-black" />
-                            )}
-                          </Button>
-                          <div className="bg-gray-100 px-2 py-1">
-                            <span className="text-sm font-medium text-black">
-                              {item.quantity}
-                            </span>
+                        ) : (
+                          // For regular items, show normal quantity controls
+                          <div className="flex items-center bg-gray-100 rounded-full">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                              className="w-8 h-8 rounded-full p-0 border-2 border-gray-300 bg-white hover:border-gray-500 hover:bg-gray-50"
+                              title="Decrease quantity (0 removes item)"
+                            >
+                              {item.quantity === 1 ? (
+                                <Trash2 className="h-4 w-4 text-black" />
+                              ) : (
+                                <Minus className="h-4 w-4 text-black" />
+                              )}
+                            </Button>
+                            <div className="bg-gray-100 px-2 py-1">
+                              <span className="text-sm font-medium text-black">
+                                {item.quantity}
+                              </span>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                              className="w-8 h-8 rounded-full p-0 border-2 border-gray-300 bg-white hover:border-gray-500 hover:bg-gray-50"
+                              title="Increase quantity"
+                            >
+                              <Plus className="h-4 w-4 text-black" />
+                            </Button>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
-                            className="w-8 h-8 rounded-full p-0 border-2 border-gray-300 bg-white hover:border-gray-500 hover:bg-gray-50"
-                            title="Increase quantity"
-                          >
-                            <Plus className="h-4 w-4 text-black" />
-                          </Button>
+                        )}
                         </div>
                       </div>
                     </div>
@@ -1103,6 +1310,16 @@ export default function ShoppingListPage() {
             </div>
 
             <div className="space-y-4">
+              {currentList.items.some(item => !item.isSplittable) && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                  <div className="flex items-center gap-2">
+                    <Scale className="h-4 w-4 text-blue-600" />
+                    <p className="text-sm text-blue-800">
+                      Multi-purchase discount and Per-KG items will be included as whole units in groups (not split).
+                    </p>
+                  </div>
+                </div>
+              )}
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-32">
                   <label className="block text-xs font-semibold text-gray-500">Target Amount ({currencySymbol})</label>
@@ -1193,6 +1410,29 @@ export default function ShoppingListPage() {
           key={photoCaptureKey}
           onExtractData={handlePhotoExtractData}
           onClose={() => setShowPhotoCapture(false)}
+        />
+      )}
+
+      {/* Weight Edit Dialog */}
+      {showWeightEditDialog && editingPerKgItem && (
+        <WeightEditDialog
+          productName={editingPerKgItem.name.replace(/\s*\([0-9.]+kg\)$/, '')}
+          pricePerKg={editingPerKgItem.price}
+          currentWeight={editingPerKgItem.quantity}
+          currentTotal={editingPerKgItem.total}
+          onConfirm={handleWeightEditConfirm}
+          onCancel={handleWeightEditCancel}
+        />
+      )}
+
+      {/* Manual Per-KG Dialog */}
+      {showManualPerKgDialog && (
+        <ManualPerKgDialog
+          onConfirm={handleManualPerKgConfirm}
+          onCancel={handleManualPerKgCancel}
+          suggestions={itemNameSuggestions}
+          initialProductName={newItem.name}
+          initialPricePerKg={newItem.price}
         />
       )}
     </div>

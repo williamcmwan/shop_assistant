@@ -19,6 +19,8 @@ export const shoppingItemSchema = z.object({
   discount: discountSchema.optional(), // Multi-purchase discount information
   discountApplied: z.boolean().default(false), // Whether discount is currently applied
   onHold: z.boolean().default(false), // Whether item is on hold (excluded from total)
+  isPerKg: z.boolean().default(false), // Whether item is priced per KG
+  isSplittable: z.boolean().default(true), // Whether item can be split into groups
 });
 
 export const shoppingGroupSchema = z.object({

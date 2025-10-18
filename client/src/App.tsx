@@ -26,7 +26,15 @@ function App() {
 
   useEffect(() => {
     // Check if splash screen has been shown for this version
-    const SPLASH_VERSION = 'v2.0'; // Update this when splash content changes
+    const SPLASH_VERSION = 'v2.2'; // Update this when splash content changes
+    
+    // Clear any old splash screen versions to force fresh display
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('splashScreenShown_') && key !== `splashScreenShown_${SPLASH_VERSION}`) {
+        localStorage.removeItem(key);
+      }
+    });
+    
     const splashShown = localStorage.getItem(`splashScreenShown_${SPLASH_VERSION}`);
     if (!splashShown) {
       setShowSplash(true);

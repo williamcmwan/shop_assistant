@@ -1,13 +1,11 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Camera, Upload, X, RotateCcw, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { processImageForManualEntry, getProductSuggestions, getPriceSuggestions } from "@/lib/ocr-service";
+import { processImageForManualEntry } from "@/lib/ocr-service";
 import { ClientImageUtils } from "@/lib/image-utils";
+import { WeightInputDialog } from "@/components/weight-input-dialog";
 
 interface PhotoCaptureProps {
-  onExtractData: (productName: string, price: number, discount?: { type: "bulk_price" | "buy_x_get_y"; quantity: number; value: number; display: string }) => void;
+  onExtractData: (productName: string, price: number, discount?: { type: "bulk_price" | "buy_x_get_y"; quantity: number; value: number; display: string }, isPerKg?: boolean, weight?: number) => void;
   onClose: () => void;
 }
 
@@ -15,6 +13,8 @@ export function PhotoCapture({ onExtractData, onClose }: PhotoCaptureProps) {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [loadingText, setLoadingText] = useState<string | null>(null);
+  const [showWeightDialog, setShowWeightDialog] = useState(false);
+  const [perKgProduct, setPerKgProduct] = useState<{ name: string; pricePerKg: number; discount?: any } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const loadingInterval = useRef<NodeJS.Timeout | null>(null);
@@ -37,12 +37,12 @@ export function PhotoCapture({ onExtractData, onClose }: PhotoCaptureProps) {
         setCapturedImage(originalImageData);
         setIsProcessing(true);
         setLoadingText('Optimizing image');
-        
+
         try {
           // Get original image info for logging
           const originalInfo = await ClientImageUtils.getImageInfo(originalImageData);
           console.log(`📸 Original image: ${originalInfo.width}x${originalInfo.height}, ~${Math.round(originalInfo.originalSize / 1024)}KB`);
-          
+
           // Resize image on client side before uploading for maximum speed
           let optimizedImageData: string;
           try {
@@ -51,22 +51,22 @@ export function PhotoCapture({ onExtractData, onClose }: PhotoCaptureProps) {
             console.warn('⚠️ Image optimization failed, using original image:', optimizeError);
             optimizedImageData = originalImageData;
           }
-          
+
           // Get optimized image info for comparison
           const optimizedInfo = await ClientImageUtils.getImageInfo(optimizedImageData);
           console.log(`🖼️ Optimized image: ${optimizedInfo.width}x${optimizedInfo.height}, ~${Math.round(optimizedInfo.originalSize / 1024)}KB`);
-          
+
           // Calculate size reduction
           const sizeReduction = ((originalInfo.originalSize - optimizedInfo.originalSize) / originalInfo.originalSize * 100).toFixed(1);
           console.log(`📊 Size reduction: ${sizeReduction}%`);
-          
+
           setLoadingText('Processing image');
           let dotCount = 0;
           loadingInterval.current = setInterval(() => {
             dotCount = (dotCount + 1) % 4;
             setLoadingText('Processing' + '.'.repeat(dotCount));
           }, 400);
-          
+
           timeoutRef.current = setTimeout(() => {
             setIsProcessing(false);
             setLoadingText('Server Error...');
@@ -84,10 +84,10 @@ export function PhotoCapture({ onExtractData, onClose }: PhotoCaptureProps) {
               variant: 'destructive',
             });
           }, 15000);
-          
+
           // Process the optimized image
           const productInfo = await processImageForManualEntry(optimizedImageData);
-          
+
           if (timeoutRef.current) clearTimeout(timeoutRef.current);
           if (loadingInterval.current) clearInterval(loadingInterval.current);
           setLoadingText(null);
@@ -95,8 +95,21 @@ export function PhotoCapture({ onExtractData, onClose }: PhotoCaptureProps) {
           // Clear global window variables on success
           (window as any).__ocrLoadingText = null;
           (window as any).__ocrIsProcessing = false;
-          onExtractData(productInfo.productName, productInfo.price, productInfo.discount);
-          
+
+          // Check if this is a per-KG product
+          if (productInfo.isPerKg && productInfo.price > 0) {
+            setPerKgProduct({
+              name: productInfo.productName,
+              pricePerKg: productInfo.price,
+              discount: productInfo.discount
+            });
+            setShowWeightDialog(true);
+            // Don't close yet - wait for weight input
+          } else {
+            onExtractData(productInfo.productName, productInfo.price, productInfo.discount);
+            onClose();
+          }
+
         } catch (error) {
           if (timeoutRef.current) clearTimeout(timeoutRef.current);
           if (loadingInterval.current) clearInterval(loadingInterval.current);
@@ -114,7 +127,6 @@ export function PhotoCapture({ onExtractData, onClose }: PhotoCaptureProps) {
             description: 'Please enter product information manually.',
             variant: 'destructive',
           });
-        } finally {
           onClose();
         }
       };
@@ -135,6 +147,22 @@ export function PhotoCapture({ onExtractData, onClose }: PhotoCaptureProps) {
     (window as any).__ocrIsProcessing = isProcessing;
   }, [loadingText, isProcessing]);
 
+  const handleWeightConfirm = (weight: number) => {
+    if (perKgProduct) {
+      // For per-KG items, pass the per-KG price (not the total price)
+      onExtractData(perKgProduct.name, perKgProduct.pricePerKg, perKgProduct.discount, true, weight);
+      setShowWeightDialog(false);
+      setPerKgProduct(null);
+      onClose();
+    }
+  };
+
+  const handleWeightCancel = () => {
+    setShowWeightDialog(false);
+    setPerKgProduct(null);
+    onClose();
+  };
+
   // Cleanup effect to reset file input when component unmounts
   useEffect(() => {
     return () => {
@@ -151,13 +179,24 @@ export function PhotoCapture({ onExtractData, onClose }: PhotoCaptureProps) {
   }, []);
 
   return (
-    <input
-      ref={fileInputRef}
-      type="file"
-      accept="image/*"
-      capture="environment"
-      onChange={handleFileUpload}
-      className="hidden"
-    />
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleFileUpload}
+        className="hidden"
+      />
+
+      {showWeightDialog && perKgProduct && (
+        <WeightInputDialog
+          productName={perKgProduct.name}
+          pricePerKg={perKgProduct.pricePerKg}
+          onConfirm={handleWeightConfirm}
+          onCancel={handleWeightCancel}
+        />
+      )}
+    </>
   );
 } 

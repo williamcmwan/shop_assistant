@@ -14,6 +14,7 @@ export interface GeminiExtractionResult {
     value: number;
     display: string;
   };
+  isPerKg?: boolean;
 }
 
 export class GeminiService {
@@ -45,13 +46,19 @@ export class GeminiService {
         contents: [{
           parts: [
             {
-              text: `Analyze this price tag image and extract the product name, price, and any multi-purchase discounts. 
+              text: `Analyze this price tag image and extract the product name, price, any multi-purchase discounts, and pricing type. 
               
               Requirements:
-              - Extract the main product name (clean, without store names, barcodes, or promotional text)
+              - Extract the main product name (clean, without store names like "DUNNES STORES", barcodes, or promotional text)
               - Extract the current price in euros (€)
               - If there are multiple prices, prefer the "NOW" or "ONLY" price
               - Handle cents format (e.g., "40c" = €0.40)
+              - IMPORTANT: Detect if this is per-KG pricing by looking for text like:
+                * "PER KG" (most common)
+                * "/KG" 
+                * "per kilo"
+                * "per kilogram"
+                * If you see any of these, set "isPerKg": true
               - Look for multi-purchase discount offers like:
                 * "3 for €10", "2 for €5.99" (bulk pricing)
                 * "3 for 2", "2 for 1" (buy X get Y offers)
@@ -61,11 +68,21 @@ export class GeminiService {
                 * "2 for €3.18 (€1.59 each)" - only the "2 for €3.18" part is a discount
               - Return only the essential product information
               
+              EXAMPLE for per-KG items:
+              If you see "TOMATOES CLASS 1 HOLLAND PER KG €2.99", return:
+              {
+                "productName": "TOMATOES CLASS 1 HOLLAND",
+                "price": 2.99,
+                "confidence": 0.9,
+                "isPerKg": true
+              }
+              
               Format your response as JSON:
               {
                 "productName": "Clean product name",
                 "price": 1.25,
                 "confidence": 0.9,
+                "isPerKg": false,
                 "discount": {
                   "type": "bulk_price",
                   "quantity": 3,
@@ -125,6 +142,8 @@ export class GeminiService {
       // Extract the response text
       const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
       
+      console.log('📝 Raw Gemini response text:', responseText);
+      
       if (!responseText) {
         throw new Error('No response text from Gemini API');
       }
@@ -132,8 +151,11 @@ export class GeminiService {
       // Try to parse JSON from the response
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
+        console.error('❌ No JSON found in response:', responseText);
         throw new Error('No JSON found in Gemini response');
       }
+      
+      console.log('🔍 Extracted JSON:', jsonMatch[0]);
 
       const parsedData = JSON.parse(jsonMatch[0]);
       
@@ -175,14 +197,18 @@ export class GeminiService {
         productName: parsedData.productName,
         price: parsedData.price,
         confidence: parsedData.confidence || 0.8,
+        isPerKg: parsedData.isPerKg,
         discount: parsedData.discount
       });
+      
+      console.log('📋 Full parsed data from Gemini:', parsedData);
 
       const result_response: GeminiExtractionResult = {
         success: true,
         productName: parsedData.productName.trim(),
         price: parseFloat(parsedData.price.toFixed(2)),
         confidence: Math.min(1.0, Math.max(0.0, parsedData.confidence || 0.8)),
+        isPerKg: parsedData.isPerKg || false,
         rawResponse: result
       };
 

@@ -1,16 +1,20 @@
-# Shop Assistant v1.0.2 🛒
+# Shop Assistant v2.1 🛒
 
 A modern shopping assistant application with Camera, OCR and AI price tag detection capabilities.
 
-**Latest Update**: Added hold item feature to temporarily exclude items from totals and list splitting.
+**Latest Update**: Added Per-KG price detection with automatic weight calculation, enhanced UI with consistent blue theme, and improved user experience with Enter key support for forms.
 
 ## ✨ Features
 
-- **📸 OCR Price Tag Scanning with Multi-Purchase Discounts** - Take photos of price tags and automatically extract product information including volume discounts (3 for €10, 3 for 2, etc.)
+- **⚖️ Per-KG Price Detection** - Auto detect price per kg items and calculate the price based on weight input with dedicated weight management dialogs
+- **�  OCR Price Tag Scanning with Multi-Purchase Discounts** - Take photos of price tags and automatically extract product information including volume discounts (3 for €10, 3 for 2, etc.)
+- **🎨 Updated Interface** - Fresh new design with consistent blue theme, improved layouts, and enhanced user experience
+- **⌨️ Auto Complete Input** - Smart suggestions based on your shopping history for faster item entry
+- **� MCurrency Configuration** - Customize your currency symbol - supports €, $, £, ¥ and custom symbols
 - **📝 Shopping List Management** - Create and manage multiple shopping lists
 - **⏸️ Hold Item Feature** - Temporarily put items on hold to exclude them from totals and list splitting
-- **🎯 Product Suggestions** - Smart suggestions for product names and prices
-- **📱 Mobile-First Design** - Optimized for mobile devices
+- **� Intetlligent Grouping** - Smart bin-packing algorithm optimally splits lists by target amounts
+- **� DMobile-First Design** - Optimized for mobile devices with touch-friendly interface
 - **⚡ Fast & Lightweight** - Clean, optimized codebase with minimal dependencies
 - **🖼️ Image Processing** - Automatic image resizing for optimal OCR performance
 - **🔄 Smart Deployment** - Universal deployment script with intelligent cleanup
@@ -96,6 +100,9 @@ client/src/
 │   ├── shopping-item.tsx    # Individual shopping item
 │   ├── group-container.tsx  # Shopping list container
 │   ├── quantity-input.tsx   # Quantity input component
+│   ├── manual-perkg-dialog.tsx  # Manual Per-KG item entry dialog
+│   ├── weight-edit-dialog.tsx   # Per-KG item weight editing dialog
+│   ├── splash-screen.tsx    # Feature showcase splash screen
 │   └── ui/                  # Minimal UI components
 │       ├── button.tsx       # Button component
 │       ├── input.tsx        # Input component
@@ -129,25 +136,39 @@ client/src/
 ### OCR Price Scanning with Discount Detection
 3. **Scan Price Tags**: Use the camera button to scan price tags automatically
    - **Multi-Purchase Discounts**: Automatically detects "3 for €10" or "3 for 2" offers
+   - **Per-KG Detection**: Automatically detects price per kg items and prompts for weight input
    - **Smart Quantity Setting**: Sets quantity to discount amount for immediate savings
    - **Discount Display**: Shows discount info like "(3 for €10)" in product name
 
+### Per-KG Item Management
+4. **Add Per-KG Items**: Use the scale button to manually add items sold by weight
+   - **Weight Input Dialog**: Enter product name, price per kg, and weight
+   - **Automatic Calculation**: Total price calculated as price per kg × weight
+   - **Weight Display**: Shows weight in product name like "Tomatoes (1.5kg)"
+   - **Enter Key Support**: Press Enter in any field to quickly submit the form
+
+5. **Edit Per-KG Items**: Click the scale icon on existing per-kg items to modify
+   - **Edit All Fields**: Change product name, price per kg, and weight
+   - **Real-time Updates**: See total price update as you change values
+   - **Quick Entry**: Use Enter key to save changes instantly
+
 ### Managing Discounts
-4. **Toggle Discounts**: Use the green tag button to apply/remove discounts
+6. **Toggle Discounts**: Use the green tag button to apply/remove discounts
    - **Automatic Application**: Discounts apply when quantity matches requirements
    - **Visual Indicators**: Green pricing shows active discounts
    - **Smart Grouping**: Discounted items stay together in groups
 
 ### Hold Items
-5. **Hold/Resume Items**: Use the pause button to hold items temporarily
+7. **Hold/Resume Items**: Use the pause button to hold items temporarily
    - **Exclude from Total**: Held items are excluded from the total calculation
    - **Exclude from Splitting**: Held items won't be included when splitting lists into groups
    - **Visual Indicators**: Held items show with gray background and "(on hold)" label
    - **Easy Toggle**: Click the play button to resume held items
 
 ### Smart Grouping
-6. **Enable Split Mode**: Automatically group items by target spending amounts
-7. **Track Totals**: Monitor your spending with real-time calculations including discount savings
+8. **Enable Split Mode**: Automatically group items by target spending amounts
+   - **Whole Unit Grouping**: Multi-purchase discount and Per-KG items are included as whole units in groups (not split)
+9. **Track Totals**: Monitor your spending with real-time calculations including discount savings
 
 ## 🔧 Configuration
 

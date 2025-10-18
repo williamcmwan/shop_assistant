@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, X, Camera, Tag, Package, PauseCircle, Type, Settings, Palette } from "lucide-react";
+import { ArrowRight, X, Camera, Tag, Package, PauseCircle, Type, Settings, Palette, Scale } from "lucide-react";
 
 interface SplashScreenProps {
   onClose: () => void;
@@ -15,6 +15,13 @@ interface Feature {
 }
 
 const features: Feature[] = [
+  {
+    title: "Per-KG Price Detection",
+    description: "Auto detect price per kg items and calculate the price based on weight input",
+    icon: "⚖️",
+    iconComponent: <Scale className="w-12 h-12" />,
+    gradient: "from-teal-400 to-teal-600"
+  },
   {
     title: "Updated Interface",
     description: "Fresh new design with consistent blue theme, improved layouts, and enhanced user experience",
@@ -68,6 +75,9 @@ const features: Feature[] = [
 
 export function SplashScreen({ onClose }: SplashScreenProps) {
   const [currentFeature, setCurrentFeature] = useState(0);
+  
+  // Debug log to check feature order
+  console.log('Features array:', features.map((f, i) => `${i}: ${f.title}`));
   const [isVisible, setIsVisible] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -124,7 +134,7 @@ export function SplashScreen({ onClose }: SplashScreenProps) {
   };
 
   const handleClose = () => {
-    const SPLASH_VERSION = 'v2.0'; // Keep in sync with App.tsx
+    const SPLASH_VERSION = 'v2.2'; // Keep in sync with App.tsx
     localStorage.setItem(`splashScreenShown_${SPLASH_VERSION}`, 'true');
     setFadeOut(true);
     setTimeout(() => {

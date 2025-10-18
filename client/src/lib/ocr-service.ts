@@ -10,6 +10,7 @@ export interface ProductInfo {
     value: number;
     display: string;
   };
+  isPerKg?: boolean;
 }
 
 export interface ProductSuggestion {
@@ -188,7 +189,7 @@ const detectDiscount = (text: string): { type: "bulk_price" | "buy_x_get_y", qua
 };
 
 // Enhanced parsing with multiple strategies
-const parseProductInfo = (text: string): { productName: string; price: number; discount?: { type: "bulk_price" | "buy_x_get_y", quantity: number, value: number, display: string } } => {
+const parseProductInfo = (text: string): { productName: string; price: number; discount?: { type: "bulk_price" | "buy_x_get_y", quantity: number, value: number, display: string }; isPerKg?: boolean } => {
   console.log("=== Starting OCR Text Parsing ===");
   console.log("Original text:", text);
   
@@ -197,6 +198,12 @@ const parseProductInfo = (text: string): { productName: string; price: number; d
   
   const lines = cleanedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
   console.log("Lines after splitting:", lines);
+
+  // Detect per-KG pricing
+  const isPerKg = /per\s*kg|\/\s*kg|per\s*kilo/i.test(text);
+  if (isPerKg) {
+    console.log("Per-KG pricing detected");
+  }
 
   // Detect discount information
   const discount = detectDiscount(text);
@@ -236,35 +243,42 @@ const parseProductInfo = (text: string): { productName: string; price: number; d
 
   // Collect all price matches
   lines.forEach((line, index) => {
-    // Skip lines with unit prices or non-euro currencies
-    const lowerLine = line.toLowerCase();
-    if (/(per\s*kg|per\s*litre|per\s*l|per\s*unit|each|per\s*piece|per\s*item)/.test(lowerLine)) return;
-    if (/£|\$/.test(line)) return;
+    console.log(`Processing line ${index}: "${line}"`);
+    // Skip lines with non-euro currencies, but allow per-kg pricing
+    if (/£|\$/.test(line)) {
+      console.log(`Skipping line ${index} due to non-euro currency`);
+      return;
+    }
+    
     pricePatterns.forEach((pattern, patternIndex) => {
       const matches = Array.from(line.matchAll(pattern));
+      if (matches.length > 0) {
+        console.log(`Pattern ${patternIndex} matched on line '${line}':`, matches);
+      }
       matches.forEach(match => {
         let priceStr;
         let priceValue = 0;
         let isNow = false;
         let isWas = false;
-        // Debug: log the match groups for each pattern
-        console.log(`Pattern ${patternIndex} on line '${line}':`, match);
-        // Only allow matches with two decimals, and not immediately followed by a slash
+        
+        console.log(`Processing match:`, match);
+        // Allow matches with two decimals or cents, and not immediately followed by a slash
         if (match[0] &&
-            /\d+[.,]\d{2}/.test(match[0]) &&
+            (/\d+[.,]\d{2}/.test(match[0]) || /\d+[cC]/.test(match[0])) &&
             !/\d+[.,]\d{2}\//.test(match[0])) {
           if (patternIndex === 1 || patternIndex === 11) { // NOW 40c or WAS 40c
             priceValue = parseInt(match[1], 10) / 100;
-          } else if (patternIndex === 9) { // "€ 11 25"
+          } else if (patternIndex === 8) { // "€ 2 99" format
             priceStr = `${match[1]}.${match[2]}`;
             priceValue = parseFloat(priceStr);
           } else {
             priceStr = match[1] && match[1].replace(',', '.');
             priceValue = parseFloat(priceStr);
           }
-          if (patternIndex <= 2 || patternIndex === 9 || patternIndex === 10) isNow = /now/i.test(line);
-          if (patternIndex >= 11) isWas = /was/i.test(line);
+          if (patternIndex <= 2 || patternIndex === 8 || patternIndex === 9) isNow = /now/i.test(line);
+          if (patternIndex >= 10) isWas = /was/i.test(line);
           if (priceValue > 0.01 && priceValue < 1000) {
+            console.log(`Adding price match: ${priceValue} from line "${line}"`);
             allPriceMatches.push({
               price: priceValue,
               line: line,
@@ -273,7 +287,11 @@ const parseProductInfo = (text: string): { productName: string; price: number; d
               isNow,
               isWas
             });
+          } else {
+            console.log(`Price value ${priceValue} out of range, skipping`);
           }
+        } else {
+          console.log(`Match "${match[0]}" doesn't meet criteria, skipping`);
         }
       });
     });
@@ -424,11 +442,17 @@ const parseProductInfo = (text: string): { productName: string; price: number; d
   if (discount) {
     console.log("Discount:", discount);
   }
+  if (isPerKg) {
+    console.log("Per-KG pricing:", isPerKg);
+  }
   console.log("===================");
   
-  const result: { productName: string; price: number; discount?: { type: "bulk_price" | "buy_x_get_y", quantity: number, value: number, display: string } } = { productName, price };
+  const result: { productName: string; price: number; discount?: { type: "bulk_price" | "buy_x_get_y", quantity: number, value: number, display: string }; isPerKg?: boolean } = { productName, price };
   if (discount) {
     result.discount = discount;
+  }
+  if (isPerKg) {
+    result.isPerKg = isPerKg;
   }
   return result;
 };
@@ -484,7 +508,8 @@ export const processImageForManualEntry = async (imageData: string): Promise<Pro
         productName: result.productName || "",
         price: result.price || 0,
         confidence: result.confidence || 0.5,
-        discount: result.discount
+        discount: result.discount,
+        isPerKg: result.isPerKg
       };
       
       return productInfo;
