@@ -75,7 +75,7 @@ export class GeminiService {
         contents: [{
           parts: [
             {
-              text: `Extract product info from this image as JSON. Identify product even without text.
+              text: `Extract product info from this image as a SINGLE JSON object. If multiple products visible, pick the most prominent one.
 
 productName: Clean name + weight (e.g. "Greek Yogurt 450g"). If no text, identify visually.
 price: Current unit price. Use "NOW"/"ONLY" price, NOT "WAS" price. IGNORE "SAVE €X" and "WAS €X". Convert "40c"→0.40. 0 if none.
@@ -89,6 +89,8 @@ cropArea: Pick ONE prominent item (not shelf). Ignore labels. Return center % an
   - centerX: horizontal center (0-100%)
   - centerY: vertical center (0-100%)
   - size: 20-50% (typically 35-40 for one item)
+
+IMPORTANT: Return a SINGLE object, NOT an array. If multiple items, choose the most prominent/centered one.
 
 Example: {"productName":"Baby Carrot 200g","price":1.79,"confidence":0.9,"discount":{"type":"bulk_price","quantity":2,"value":3.0,"display":"(2 for €3.00)"},"isPerKg":false,"cropArea":{"centerX":50,"centerY":30,"size":40}}`
             },
@@ -135,8 +137,8 @@ Example: {"productName":"Baby Carrot 200g","price":1.79,"confidence":0.9,"discou
         throw new Error('No response text from Gemini API');
       }
 
-      // Try to parse JSON from the response
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      // Try to parse JSON from the response (handle both objects and arrays)
+      let jsonMatch = responseText.match(/\[[\s\S]*\]/) || responseText.match(/\{[\s\S]*?\}(?=\s*$|```)/);
       if (!jsonMatch) {
         console.error('❌ No JSON found in response:', responseText);
         throw new Error('No JSON found in Gemini response');
@@ -144,7 +146,16 @@ Example: {"productName":"Baby Carrot 200g","price":1.79,"confidence":0.9,"discou
 
       console.log('🔍 Extracted JSON:', jsonMatch[0]);
 
-      const parsedData = JSON.parse(jsonMatch[0]);
+      let parsedData = JSON.parse(jsonMatch[0]);
+
+      // If Gemini returned an array, take the first item
+      if (Array.isArray(parsedData)) {
+        console.log(`📦 Gemini returned ${parsedData.length} items, using the first one`);
+        if (parsedData.length === 0) {
+          throw new Error('Gemini returned empty array');
+        }
+        parsedData = parsedData[0];
+      }
 
       // Validate the parsed data
       if (typeof parsedData.productName !== 'string' || typeof parsedData.price !== 'number') {
