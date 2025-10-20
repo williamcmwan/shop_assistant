@@ -138,15 +138,41 @@ Example: {"productName":"Baby Carrot 200g","price":1.79,"confidence":0.9,"discou
       }
 
       // Try to parse JSON from the response (handle both objects and arrays)
-      let jsonMatch = responseText.match(/\[[\s\S]*\]/) || responseText.match(/\{[\s\S]*?\}(?=\s*$|```)/);
-      if (!jsonMatch) {
-        console.error('❌ No JSON found in response:', responseText);
-        throw new Error('No JSON found in Gemini response');
+      // Remove markdown code blocks if present
+      let cleanedText = responseText.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+      
+      console.log('🧹 Cleaned text:', cleanedText);
+
+      let parsedData;
+      try {
+        // Try to parse directly (works for both arrays and objects)
+        parsedData = JSON.parse(cleanedText);
+        console.log('✅ Successfully parsed JSON');
+      } catch (parseError) {
+        console.error('❌ Direct parse failed, trying regex extraction...');
+        
+        // Fallback: try to extract JSON with regex
+        let jsonMatch = cleanedText.match(/\[[\s\S]*\]/);
+        if (!jsonMatch) {
+          // Try to find object - match from first { to last }
+          jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
+        }
+        
+        if (!jsonMatch) {
+          console.error('❌ No JSON found in response:', responseText);
+          throw new Error('No JSON found in Gemini response');
+        }
+
+        console.log('🔍 Extracted JSON with regex:', jsonMatch[0]);
+        
+        try {
+          parsedData = JSON.parse(jsonMatch[0]);
+        } catch (secondParseError) {
+          console.error('❌ JSON parse error:', secondParseError);
+          console.error('❌ Attempted to parse:', jsonMatch[0]);
+          throw new Error('Failed to parse JSON from Gemini response');
+        }
       }
-
-      console.log('🔍 Extracted JSON:', jsonMatch[0]);
-
-      let parsedData = JSON.parse(jsonMatch[0]);
 
       // If Gemini returned an array, take the first item
       if (Array.isArray(parsedData)) {
