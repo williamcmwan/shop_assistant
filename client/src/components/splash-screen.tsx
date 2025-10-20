@@ -66,7 +66,7 @@ const features: Feature[] = [
   },
   {
     title: "Photo Capture Pricing",
-    description: "Scan price tags instantly with AI-powered OCR technology",
+    description: "Scan price tags instantly with AI-powered Gemini technology",
     icon: "📸",
     iconComponent: <Camera className="w-12 h-12" />,
     gradient: "from-blue-400 to-blue-600"

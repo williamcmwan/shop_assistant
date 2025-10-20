@@ -1,4 +1,4 @@
-// OCR Service with Server-Side OCR and Smart Suggestions
+// Extraction Service with Server-Side Gemini AI and Smart Suggestions
 
 export interface ProductInfo {
   productName: string;
@@ -133,7 +133,7 @@ export const getPriceSuggestions = (productName: string): number[] => {
   return [1.00, 1.25, 1.50, 1.75, 2.00, 2.25, 2.50, 2.75, 3.00, 3.25, 3.50, 3.75, 4.00, 4.25, 4.50, 4.75, 5.00, 5.25, 5.50, 5.75, 6.00, 6.25, 6.50, 6.75, 7.00, 7.25, 7.50, 7.75, 8.00, 8.25, 8.50, 8.75, 9.00, 9.25, 9.50, 9.75, 10.00, 11.25];
 };
 
-// Detect discount patterns from OCR text
+// Detect discount patterns from extracted text
 const detectDiscount = (text: string): { type: "bulk_price" | "buy_x_get_y", quantity: number, value: number, display: string } | null => {
   const discountPatterns = [
     // Type 1: bulk_price - "3 for €10", "2 for 5.99", etc.
@@ -196,7 +196,7 @@ const detectDiscount = (text: string): { type: "bulk_price" | "buy_x_get_y", qua
 
 // Enhanced parsing with multiple strategies
 const parseProductInfo = (text: string): { productName: string; price: number; discount?: { type: "bulk_price" | "buy_x_get_y", quantity: number, value: number, display: string }; isPerKg?: boolean } => {
-  console.log("=== Starting OCR Text Parsing ===");
+  console.log("=== Starting Text Parsing ===");
   console.log("Original text:", text);
   
   const cleanedText = preprocessText(text);
@@ -367,7 +367,7 @@ const parseProductInfo = (text: string): { productName: string; price: number; d
       !isSymbolLine(line) &&
       line.trim().length > 0
   );
-  console.log('OCR lines:', lines);
+  console.log('Extracted lines:', lines);
   console.log('Candidate product name lines:', candidateLines);
   // Skip initial offer/discount lines
   let startIdx = 0;

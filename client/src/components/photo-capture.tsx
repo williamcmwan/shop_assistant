@@ -169,7 +169,7 @@ export function PhotoCapture({ onExtractData, onClose }: PhotoCaptureProps) {
               fileInputRef.current.value = '';
             }
             toast({
-              title: 'OCR Timeout',
+              title: 'Processing Timeout',
               description: 'No response from server after 15 seconds.',
               variant: 'destructive',
             });
@@ -239,7 +239,7 @@ export function PhotoCapture({ onExtractData, onClose }: PhotoCaptureProps) {
             fileInputRef.current.value = '';
           }
           toast({
-            title: 'OCR processing failed',
+            title: 'Processing failed',
             description: 'Please enter product information manually.',
             variant: 'destructive',
           });

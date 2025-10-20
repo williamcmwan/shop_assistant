@@ -90,7 +90,7 @@ export class ClientImageUtils {
   }
 
   /**
-   * Calculate optimal dimensions for OCR/AI processing
+   * Calculate optimal dimensions for AI processing
    * @param originalWidth Original image width
    * @param originalHeight Original image height
    * @param maxWidth Maximum allowed width
@@ -114,7 +114,7 @@ export class ClientImageUtils {
     width = Math.round(width * scale);
     height = Math.round(height * scale);
     
-    // Ensure minimum size for OCR readability
+    // Ensure minimum size for AI readability
     const minWidth = 150;
     const minHeight = 100;
     
@@ -170,13 +170,13 @@ export class ClientImageUtils {
   }
 
   /**
-   * Optimize image specifically for OCR processing
+   * Optimize image specifically for AI processing
    * @param imageData Base64 encoded image data
    * @returns Optimized base64 image data
    */
   static async optimizeForOCR(imageData: string): Promise<string> {
     return this.resizeImage(imageData, {
-      maxWidth: 384,   // Maximum 384px for OCR
+      maxWidth: 384,   // Maximum 384px for AI processing
       maxHeight: 384,
       quality: 85,     // Good quality for text recognition (0-100)
       format: 'jpeg'
@@ -190,7 +190,7 @@ export class ClientImageUtils {
    */
   static async optimizeForUpload(imageData: string): Promise<string> {
     return this.resizeImage(imageData, {
-      maxWidth: 384,   // Maximum 384px for optimal OCR performance
+      maxWidth: 384,   // Maximum 384px for optimal AI performance
       maxHeight: 384,
       quality: 80,     // Good balance between quality and size
       format: 'jpeg'

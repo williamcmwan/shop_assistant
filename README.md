@@ -1,6 +1,6 @@
 # Shop Assistant v2.3 🛒
 
-A modern shopping assistant application with Camera, OCR and AI price tag detection capabilities.
+A modern shopping assistant application with Camera and AI-powered price tag detection using Google Gemini.
 
 **Latest Update**: Added product photo thumbnails with Gemini vision extraction, configurable photo settings, and enhanced UI with optimized spacing and layout.
 
@@ -9,7 +9,7 @@ A modern shopping assistant application with Camera, OCR and AI price tag detect
 - **🖼️ Product Photo Thumbnails** - AI-powered product image extraction from captured photos using Gemini vision, with 50x50px thumbnails displayed in lists
 - **⚙️ Configurable Photo Settings** - Enable/disable product photo extraction for faster processing, with option to clear all stored thumbnails
 - **⚖️ Per-KG Price Detection** - Auto detect price per kg items and calculate the price based on weight input with dedicated weight management dialogs
-- **�  OCR Price Tag Scanning with Multi-Purchase Discounts** - Take photos of price tags and automatically extract product information including volume discounts (3 for €10, 3 for 2, etc.)
+- **📷 AI Price Tag Scanning with Multi-Purchase Discounts** - Take photos of price tags and automatically extract product information using Gemini AI, including volume discounts (3 for €10, 3 for 2, etc.)
 - **🎨 Updated Interface** - Fresh new design with consistent blue theme, improved layouts, and enhanced user experience
 - **⌨️ Auto Complete Input** - Smart suggestions based on your shopping history for faster item entry
 - **� MCurrency Configuration** - Customize your currency symbol - supports €, $, £, ¥ and custom symbols
@@ -18,7 +18,7 @@ A modern shopping assistant application with Camera, OCR and AI price tag detect
 - **� Intetlligent Grouping** - Smart bin-packing algorithm optimally splits lists by target amounts
 - **� DMobile-First Design** - Optimized for mobile devices with touch-friendly interface
 - **⚡ Fast & Lightweight** - Clean, optimized codebase with minimal dependencies
-- **🖼️ Image Processing** - Automatic image resizing for optimal OCR performance
+- **🖼️ Image Processing** - Automatic image resizing for optimal AI performance
 - **🔄 Smart Deployment** - Universal deployment script with intelligent cleanup
 - **💰 Discount Management** - Automatic detection and application of multi-purchase discounts with smart grouping
 
@@ -98,7 +98,7 @@ npm run dev
 ```
 client/src/
 ├── components/
-│   ├── photo-capture.tsx    # OCR photo capture interface
+│   ├── photo-capture.tsx    # AI photo capture interface
 │   ├── shopping-item.tsx    # Individual shopping item
 │   ├── group-container.tsx  # Shopping list container
 │   ├── quantity-input.tsx   # Quantity input component
@@ -115,7 +115,7 @@ client/src/
 │       ├── toast.tsx        # Toast component
 │       └── tooltip.tsx      # Tooltip component
 ├── lib/
-│   ├── ocr-service.ts       # OCR text processing logic
+│   ├── ocr-service.ts       # Extraction service (client-side)
 │   ├── storage.ts           # Local storage utilities
 │   ├── queryClient.ts       # React Query configuration
 │   ├── bin-packing.ts       # Bin packing algorithm
@@ -135,11 +135,11 @@ client/src/
 1. **Create a Shopping List**: Click "New List" and give it a name
 2. **Add Items**: Use the form to add items with prices and quantities
 
-### OCR Price Scanning with Discount Detection
-3. **Scan Price Tags**: Use the camera button to scan price tags automatically
+### AI Price Scanning with Discount Detection
+3. **Scan Price Tags**: Use the camera button to scan price tags automatically with Gemini AI
    - **Multi-Purchase Discounts**: Automatically detects "3 for €10" or "3 for 2" offers
    - **Per-KG Detection**: Automatically detects price per kg items and prompts for weight input
-   - **Product Photo Extraction**: AI extracts product thumbnails from captured images using Gemini vision
+   - **Product Photo Extraction**: Gemini AI extracts product thumbnails from captured images
    - **Smart Quantity Setting**: Sets quantity to discount amount for immediate savings
    - **Discount Display**: Shows discount info like "(3 for €10)" in product name
 
@@ -186,36 +186,26 @@ client/src/
 Create a `.env` file in the root directory (see `env.example` for full configuration):
 
 ```env
-# Extraction Backend Configuration
-PRICETAG_EXTRACTION_BACKEND=gemini_fallback  # ocr | gemini | gemini_fallback
-
 # API Keys
 GEMINI_API_KEY=your_gemini_api_key_here
-OCRSPACE_API_KEY=your_ocr_space_api_key_here
+
+# Gemini Model Configuration
+GEMINI_MODEL=gemini-2.0-flash-lite
 
 # Server Configuration
 PORT=3000
 NODE_ENV=production
 ```
 
-### Flexible Extraction Backends
+### AI-Powered Extraction
 
-The application supports three extraction options:
+The application uses Google Gemini AI for intelligent price tag extraction:
 
-#### Option 1: OCR-Space Only (`ocr`)
-- **Use case**: Free tier, limited requests
-- **Setup**: Only requires `OCRSPACE_API_KEY`
-- **Performance**: Good for basic text extraction
-
-#### Option 2: Gemini Only (`gemini`)
-- **Use case**: Better accuracy, paid service
-- **Setup**: Requires `GEMINI_API_KEY`
-- **Performance**: Superior product name and price extraction
-
-#### Option 3: Gemini with Fallback (`gemini_fallback`) - **Recommended**
-- **Use case**: Production environments, maximum reliability
-- **Setup**: Requires both API keys
-- **Performance**: Uses Gemini first, falls back to OCR-Space if needed
+- **Superior Accuracy**: AI-powered product name and price extraction
+- **Visual Recognition**: Can identify products even without readable text
+- **Discount Detection**: Automatically detects multi-purchase offers
+- **Product Photos**: Extracts product thumbnails from captured images
+- **Fast Processing**: Optimized for quick response times
 
 ### App Configuration Settings
 
@@ -240,15 +230,11 @@ Access the Settings menu (gear icon) on the main page to configure:
 
 ### API Setup
 
-#### Google Gemini API
+#### Google Gemini API (Required)
 1. Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
 2. Create a new API key
 3. Add `GEMINI_API_KEY=your_key` to your `.env` file
-
-#### OCR Space API
-1. Sign up at [OCR Space](https://ocr.space/ocrapi)
-2. Get your API key
-3. Add `OCRSPACE_API_KEY=your_key` to your `.env` file
+4. (Optional) Configure the model: `GEMINI_MODEL=gemini-2.0-flash-lite`
 
 ## 📦 Deployment
 
@@ -316,15 +302,16 @@ Only essential UI components remain:
 **Kept:**
 - Core React dependencies
 - Essential Radix UI primitives
-- OCR and image processing libraries
+- Image processing libraries
 - Styling utilities
 
-## 🎯 Flexible Extraction Features
+## 🎯 AI Extraction Features
 
-### Multiple Backend Support
-- **OCR-Space API**: Traditional text extraction with pattern matching
-- **Google Gemini API**: AI-powered product name and price extraction
-- **Hybrid Fallback**: Gemini primary with OCR-Space backup for reliability
+### Google Gemini AI
+- **Advanced Vision AI**: Uses Google's latest Gemini models for superior accuracy
+- **Visual Product Recognition**: Identifies products even when text is unclear
+- **Multi-language Support**: Handles various languages and formats
+- **Discount Detection**: Automatically identifies promotional offers
 
 ### Image Processing
 - **Automatic resizing** to stay within API limits
@@ -334,9 +321,8 @@ Only essential UI components remain:
 ### Smart Extraction
 - **AI-powered parsing** with Gemini for superior accuracy
 - **Image identification** when no text is readable - identifies products by visual appearance
-- **Pattern-based fallback** with OCR-Space for reliability
 - **Confidence scoring** to determine extraction quality
-- **Automatic fallback** when primary API fails or has low confidence
+- **Product photo extraction** for visual item identification
 
 ### Supported Price Formats
 - `€ 11.25` - Standard Euro format
@@ -344,12 +330,7 @@ Only essential UI components remain:
 - `ONLY € 11.25` - Promotional format
 - `11.25 €` - Reverse format
 - `40c` - Cent format (converted to €0.40)
-
-### Backend Selection
-Configure your preferred extraction method via environment variables:
-- `PRICETAG_EXTRACTION_BACKEND=ocr` - OCR-Space only
-- `PRICETAG_EXTRACTION_BACKEND=gemini` - Gemini only  
-- `PRICETAG_EXTRACTION_BACKEND=gemini_fallback` - Gemini with OCR fallback
+- `NOW €1.49` - Promotional pricing
 
 ## 📱 Mobile Optimization
 
@@ -357,7 +338,7 @@ Configure your preferred extraction method via environment variables:
 - **Camera integration** for photo capture
 - **Responsive design** for all screen sizes
 - **Offline capability** with local storage
-- **Loading indicators** during OCR processing
+- **Loading indicators** during AI processing
 
 ## 🔍 Development
 
@@ -396,7 +377,7 @@ The application follows a full-stack architecture with clear separation between 
 
 - **Frontend**: React with TypeScript, using Vite as the build tool
 - **Backend**: Express.js server with TypeScript
-- **OCR Service**: OCR Space API integration for price tag scanning
+- **AI Service**: Google Gemini API integration for intelligent price tag scanning
 - **UI Framework**: shadcn/ui components built on Radix UI primitives
 - **Styling**: Tailwind CSS with CSS variables for theming
 - **State Management**: TanStack Query for server state, local storage for persistence
@@ -415,7 +396,7 @@ The application uses Zod schemas for type validation:
 ### Data Flow
 1. **List Creation**: Users create shopping lists with names and dates
 2. **Item Management**: Add/remove items with price and quantity tracking
-3. **OCR Scanning**: Take photos of price tags for automatic data extraction
+3. **AI Scanning**: Take photos of price tags for automatic data extraction using Gemini AI
 4. **Smart Grouping**: Algorithm distributes items across groups based on target amounts
 5. **Local Persistence**: All data stored in browser localStorage
 6. **Real-time Updates**: Automatic total calculations and group rebalancing
