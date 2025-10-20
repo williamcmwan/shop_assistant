@@ -9,8 +9,8 @@ export interface ImageResizeOptions {
 
 export class ImageUtils {
   private static defaultOptions: Required<ImageResizeOptions> = {
-    maxWidth: 384,    // Maximum 384px for cost optimization
-    maxHeight: 384,   // Maintain aspect ratio
+    maxWidth: 512,    // Maximum 512px for better text recognition
+    maxHeight: 512,   // Maintain aspect ratio
     quality: 85,      // Good balance between size and quality (0-100)
     format: 'jpeg'    // Smaller file size than PNG
   };
@@ -183,8 +183,8 @@ export class ImageUtils {
    */
   static async optimizeForOCR(imageData: string): Promise<string> {
     return this.resizeImage(imageData, {
-      maxWidth: 384,   // Maximum 384px for OCR
-      maxHeight: 384,
+      maxWidth: 512,   // Maximum 512px for OCR
+      maxHeight: 512,
       quality: 85,     // Good quality for text recognition (0-100)
       format: 'jpeg'
     });
@@ -197,8 +197,8 @@ export class ImageUtils {
    */
   static async optimizeForAI(imageData: string): Promise<string> {
     return this.resizeImage(imageData, {
-      maxWidth: 384,   // Maximum 384px for AI
-      maxHeight: 384,
+      maxWidth: 512,   // Maximum 512px for AI
+      maxHeight: 512,
       quality: 80,     // Good balance (0-100)
       format: 'jpeg'
     });

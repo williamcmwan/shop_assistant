@@ -19,56 +19,84 @@ export function PhotoCapture({ onExtractData, onClose }: PhotoCaptureProps) {
   const { toast } = useToast();
   const loadingInterval = useRef<NodeJS.Timeout | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   // Read product photo extraction setting
   const extractProductPhotos = localStorage.getItem('extractProductPhotos') !== 'false';
-  
+
   useEffect(() => {
     if (!extractProductPhotos) {
       console.log('📸 Product photo extraction is DISABLED - photos will not be created or stored');
     }
   }, [extractProductPhotos]);
 
-  // Create a 50x50 thumbnail from the captured image focusing on the product
-  const createProductThumbnail = async (imageData: string): Promise<string> => {
+  // Create a 50x50 thumbnail from the captured image using Gemini's center-based crop
+  const createProductThumbnail = async (imageData: string, cropArea?: { centerX: number; centerY: number; size: number }): Promise<string> => {
     // Skip if photo extraction is disabled
     if (!extractProductPhotos) {
       console.log('⏭️ Thumbnail creation skipped (disabled in settings)');
       return '';
     }
-    
+
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        
+
         // Set thumbnail size to 50x50 square
         const thumbnailSize = 50;
         canvas.width = thumbnailSize;
         canvas.height = thumbnailSize;
-        
+
         if (ctx) {
-          // Calculate dimensions for center cropping to square
           const { width, height } = img;
           let sourceX = 0;
           let sourceY = 0;
-          let sourceSize = Math.min(width, height);
-          
-          // Center the crop
-          if (width > height) {
-            sourceX = (width - height) / 2;
+          let sourceWidth = width;
+          let sourceHeight = height;
+
+          // Use Gemini's center-based crop (percentages)
+          if (cropArea && cropArea.size) {
+            console.log('📐 Using Gemini center crop:', cropArea);
+            // Convert center point and size from percentages to pixels
+            const minDimension = Math.min(width, height);
+            const cropSize = Math.round((cropArea.size / 100) * minDimension);
+            const centerX = Math.round((cropArea.centerX / 100) * width);
+            const centerY = Math.round((cropArea.centerY / 100) * height);
+            
+            // Calculate top-left corner from center point
+            sourceX = centerX - cropSize / 2;
+            sourceY = centerY - cropSize / 2;
+            sourceWidth = cropSize;
+            sourceHeight = cropSize;
+            
+            // Ensure crop doesn't exceed image bounds
+            sourceX = Math.max(0, Math.min(sourceX, width - sourceWidth));
+            sourceY = Math.max(0, Math.min(sourceY, height - sourceHeight));
+            
+            console.log(`📐 Calculated crop: center(${centerX},${centerY}) → ${Math.round(sourceX)},${Math.round(sourceY)} ${Math.round(sourceWidth)}x${Math.round(sourceHeight)} (image: ${width}x${height})`);
           } else {
-            sourceY = (height - width) / 2;
+            // Fallback: Focus on upper-center area where products typically are
+            console.log('📐 Using fallback crop (no Gemini coordinates)');
+            const sourceSize = Math.min(width, height);
+            if (width > height) {
+              sourceX = (width - height) / 2;
+              sourceY = 0;
+            } else {
+              sourceX = 0;
+              sourceY = Math.max(0, (height - width) * 0.3);
+            }
+            sourceWidth = sourceSize;
+            sourceHeight = sourceSize;
           }
-          
+
           // Draw the cropped and scaled image
           ctx.drawImage(
             img,
-            sourceX, sourceY, sourceSize, sourceSize, // Source rectangle (square crop)
+            sourceX, sourceY, sourceWidth, sourceHeight, // Source rectangle (product area)
             0, 0, thumbnailSize, thumbnailSize // Destination rectangle (50x50)
           );
-          
+
           resolve(canvas.toDataURL('image/jpeg', 0.85));
         } else {
           resolve(imageData); // Fallback to original if canvas fails
@@ -160,14 +188,22 @@ export function PhotoCapture({ onExtractData, onClose }: PhotoCaptureProps) {
 
           // Create thumbnail from the actual captured image or use Gemini's product image (only if enabled)
           let thumbnail: string | undefined;
-          
+
           if (extractProductPhotos) {
+            console.log('📸 Product info:', {
+              hasProductImage: !!productInfo.productImage,
+              hasCropArea: !!productInfo.cropArea,
+              cropArea: productInfo.cropArea,
+              isPerKg: productInfo.isPerKg
+            });
+            
             if (productInfo.productImage) {
-              console.log('🖼️ Using Gemini-provided product image');
-              thumbnail = await createProductThumbnail(productInfo.productImage);
+              console.log('🖼️ Using Gemini-provided product image with crop coordinates');
+              thumbnail = await createProductThumbnail(productInfo.productImage, productInfo.cropArea);
             } else if (productInfo.productName && productInfo.productName.trim()) {
-              console.log('🖼️ Creating thumbnail from captured image');
-              thumbnail = await createProductThumbnail(originalImageData);
+              console.log('🖼️ Creating thumbnail from optimized image (same as Gemini analyzed) with crop coordinates');
+              // Use optimized image (same one Gemini analyzed) so crop coordinates align correctly
+              thumbnail = await createProductThumbnail(optimizedImageData, productInfo.cropArea);
             }
           } else {
             console.log('⏭️ Skipping thumbnail creation (photo extraction disabled)');

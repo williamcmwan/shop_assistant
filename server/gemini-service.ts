@@ -16,6 +16,11 @@ export interface GeminiExtractionResult {
   };
   isPerKg?: boolean;
   productImage?: string; // Base64 thumbnail of the actual product from the image
+  cropArea?: {
+    centerX: number; // Center X as percentage (0-100)
+    centerY: number; // Center Y as percentage (0-100)
+    size: number; // Size as percentage (20-50)
+  };
 }
 
 export class GeminiService {
@@ -52,47 +57,40 @@ export class GeminiService {
       // Prepare the image data (remove data URL prefix if present)
       const base64Image = imageData.includes(',') ? imageData.split(',')[1] : imageData;
 
+      // Get image dimensions to provide to Gemini
+      const imageBuffer = Buffer.from(base64Image, 'base64');
+      let imageDimensions = '512x512'; // default assumption
+      try {
+        const sharp = (await import('sharp')).default;
+        const metadata = await sharp(imageBuffer).metadata();
+        if (metadata.width && metadata.height) {
+          imageDimensions = `${metadata.width}x${metadata.height}`;
+          console.log(`📐 Image dimensions: ${imageDimensions}`);
+        }
+      } catch (error) {
+        console.warn('Could not extract image dimensions, using default');
+      }
+
       const requestBody = {
         contents: [{
           parts: [
             {
-              text: `Analyze this image and extract product information as JSON.
+              text: `Extract product info from this image as JSON. Identify product even without text.
 
-CRITICAL: You MUST identify the product, even without text!
+productName: Clean name + weight (e.g. "Greek Yogurt 450g"). If no text, identify visually.
+price: Current unit price. Use "NOW"/"ONLY" price, NOT "WAS" price. IGNORE "SAVE €X" and "WAS €X". Convert "40c"→0.40. 0 if none.
+isPerKg: true only if "PER KG" without weight/total.
+discount: Check yellow labels/packaging for "X for €Y" or "X for Y".
+  - "2 for €4.50" → {"type":"bulk_price","quantity":2,"value":4.5,"display":"(2 for €4.50)"}
+  - "3 for 2" → {"type":"buy_x_get_y","quantity":3,"value":2,"display":"(3 for 2)"}
+  - Extract BOTH unit price AND discount.
+confidence: 0.8-1.0 (text), 0.4-0.6 (visual).
+cropArea: Pick ONE prominent item (not shelf). Ignore labels. Return center % and size %.
+  - centerX: horizontal center (0-100%)
+  - centerY: vertical center (0-100%)
+  - size: 20-50% (typically 35-40 for one item)
 
-productName (REQUIRED - NEVER leave empty):
-- If text visible: Extract clean name (no store names/barcodes), include weight (e.g. "650GM")
-- If NO readable text: Identify product by what you SEE:
-  * Red can with white logo → "Coca Cola"
-  * Yellow curved fruit → "Bananas"
-  * Red round vegetables → "Tomatoes"
-  * Orange root vegetables → "Carrots"
-  * White/blue carton → "Milk"
-  * Brown loaf → "Bread"
-  * Cheese package → "Cheese"
-  * Look at: shape, color, packaging, brand logos, product type
-
-price:
-- UNIT price (single item cost), NOT the discount price
-- If "2 for €3" shown with "€1.79": use €1.79 (unit price)
-- Prefer "NOW"/"ONLY" prices, convert "40c" to 0.40
-- If no price: set to 0
-
-isPerKg:
-- true ONLY if "PER KG" text WITHOUT specific weight/total price
-- false if weight (e.g. "650GM") AND total price shown
-
-discount (look for multi-buy offers in large text/colored backgrounds):
-- "3 for 2" → {"type":"buy_x_get_y","quantity":3,"value":2,"display":"(3 for 2)"}
-- "2 for €3" → {"type":"bulk_price","quantity":2,"value":3.0,"display":"(2 for €3.00)"}
-- IMPORTANT: Extract BOTH unit price AND discount separately
-  - Example: "€1.79" with "2 for €3" → price:1.79, discount:{"type":"bulk_price","quantity":2,"value":3.0}
-
-confidence: 0.8-1.0 (text), 0.4-0.6 (visual only)
-
-Return JSON only.
-
-Example with discount: {"productName":"Baby Carrot Bag 200gm","price":1.79,"confidence":0.9,"discount":{"type":"bulk_price","quantity":2,"value":3.0,"display":"(2 for €3.00)"}}`
+Example: {"productName":"Baby Carrot 200g","price":1.79,"confidence":0.9,"discount":{"type":"bulk_price","quantity":2,"value":3.0,"display":"(2 for €3.00)"},"isPerKg":false,"cropArea":{"centerX":50,"centerY":30,"size":40}}`
             },
             {
               inline_data: {
@@ -210,7 +208,8 @@ Example with discount: {"productName":"Baby Carrot Bag 200gm","price":1.79,"conf
         confidence: Math.min(1.0, Math.max(0.0, parsedData.confidence || 0.8)),
         isPerKg: parsedData.isPerKg || false,
         rawResponse: result,
-        productImage: productImage
+        productImage: productImage,
+        cropArea: parsedData.cropArea
       };
 
       // Add discount information if present

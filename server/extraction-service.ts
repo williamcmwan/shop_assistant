@@ -20,6 +20,11 @@ export interface ExtractionResult {
   };
   isPerKg?: boolean;
   productImage?: string;
+  cropArea?: {
+    centerX: number;
+    centerY: number;
+    size: number;
+  };
 }
 
 export class ExtractionService {
@@ -131,7 +136,8 @@ export class ExtractionService {
       rawResponse: result.rawResponse,
       discount: result.discount,
       isPerKg: result.isPerKg,
-      productImage: result.productImage
+      productImage: result.productImage,
+      cropArea: result.cropArea
     };
   }
 
@@ -164,7 +170,8 @@ export class ExtractionService {
         rawResponse: geminiResult.rawResponse,
         discount: geminiResult.discount,
         isPerKg: geminiResult.isPerKg,
-        productImage: geminiResult.productImage
+        productImage: geminiResult.productImage,
+        cropArea: geminiResult.cropArea
       };
     }
     
@@ -184,6 +191,7 @@ export class ExtractionService {
       discount: ocrResult.discount || geminiResult.discount, // Use OCR discount if available, otherwise Gemini
       isPerKg: ocrResult.isPerKg || geminiResult.isPerKg, // Use OCR isPerKg if available, otherwise Gemini
       productImage: geminiResult.productImage, // Always use Gemini's product image if available
+      cropArea: geminiResult.cropArea, // Use Gemini's crop coordinates
       rawResponse: {
         gemini: geminiResult.rawResponse,
         ocr: ocrResult.rawResponse

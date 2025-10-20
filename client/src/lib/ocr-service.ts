@@ -12,6 +12,11 @@ export interface ProductInfo {
   };
   isPerKg?: boolean;
   productImage?: string;
+  cropArea?: {
+    centerX: number;
+    centerY: number;
+    size: number;
+  };
 }
 
 export interface ProductSuggestion {
@@ -517,7 +522,8 @@ export const processImageForManualEntry = async (imageData: string, extractPhoto
         confidence: result.confidence || 0.5,
         discount: result.discount,
         isPerKg: result.isPerKg,
-        productImage: result.productImage
+        productImage: result.productImage,
+        cropArea: result.cropArea
       };
       
       return productInfo;
