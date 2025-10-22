@@ -1,11 +1,12 @@
-# Shop Assistant v2.3 🛒
+# Shop Assistant v2.4 🛒
 
 A modern shopping assistant application with Camera and AI-powered price tag detection using Google Gemini.
 
-**Latest Update**: Added product photo thumbnails with Gemini vision extraction, configurable photo settings, and enhanced UI with optimized spacing and layout.
+**Latest Update**: Added AI Assistant feature with personalized recipe suggestions, meal planning, nutritional analysis, and budget insights based on your shopping items.
 
 ## ✨ Features
 
+- **✨ AI Assistant** - Personalized recipe suggestions, meal planning, nutritional analysis, and budget insights based on your shopping items with intelligent follow-up conversations
 - **🖼️ Product Photo Thumbnails** - AI-powered product image extraction from captured photos using Gemini vision, with 50x50px thumbnails displayed in lists
 - **⚙️ Configurable Photo Settings** - Enable/disable product photo extraction for faster processing, with option to clear all stored thumbnails
 - **⚖️ Per-KG Price Detection** - Auto detect price per kg items and calculate the price based on weight input with dedicated weight management dialogs
@@ -125,6 +126,7 @@ client/src/
 └── pages/
     ├── main.tsx             # Home page
     ├── create-list.tsx      # Create shopping list
+    ├── ask-ai.tsx           # AI Assistant page
     ├── not-found.tsx        # 404 page
     └── shopping-list.tsx    # Shopping list view
 ```
@@ -135,8 +137,19 @@ client/src/
 1. **Create a Shopping List**: Click "New List" and give it a name
 2. **Add Items**: Use the form to add items with prices and quantities
 
+### AI Assistant
+3. **Ask AI**: Access the AI Assistant from the main page or shopping list header
+   - **Recipe Suggestions**: Get personalized meal ideas and recipes based on your shopping items
+   - **Nutritional Analysis**: Learn about the nutritional value of your purchases
+   - **Budget Analysis**: Analyze spending patterns and get money-saving tips
+   - **Custom Questions**: Ask any question about your shopping items
+   - **Follow-up Conversations**: Continue conversations with follow-up questions
+   - **Response History**: Save and revisit previous AI conversations
+   - **Multiple Sharing Options**: Share responses via WhatsApp, Telegram, Email, SMS, or copy to clipboard
+   - **Flexible Time Periods**: Analyze items from 1-7 days for different insights
+
 ### AI Price Scanning with Discount Detection
-3. **Scan Price Tags**: Use the camera button to scan price tags automatically with Gemini AI
+4. **Scan Price Tags**: Use the camera button to scan price tags automatically with Gemini AI
    - **Multi-Purchase Discounts**: Automatically detects "3 for €10" or "3 for 2" offers
    - **Per-KG Detection**: Automatically detects price per kg items and prompts for weight input
    - **Product Photo Extraction**: Gemini AI extracts product thumbnails from captured images
@@ -144,41 +157,41 @@ client/src/
    - **Discount Display**: Shows discount info like "(3 for €10)" in product name
 
 ### Product Photo Management
-3a. **Product Thumbnails**: 50x50px product photos displayed next to items
+4a. **Product Thumbnails**: 50x50px product photos displayed next to items
    - **Automatic Extraction**: Gemini AI identifies and extracts product images from price tag photos
    - **Visual Identification**: Quickly identify items by their product photos in lists and groups
    - **Configurable**: Enable/disable photo extraction in Settings for faster processing
    - **Storage Management**: Clear all product photos from Settings to free up space
 
 ### Per-KG Item Management
-4. **Add Per-KG Items**: Use the scale button to manually add items sold by weight
+5. **Add Per-KG Items**: Use the scale button to manually add items sold by weight
    - **Weight Input Dialog**: Enter product name, price per kg, and weight
    - **Automatic Calculation**: Total price calculated as price per kg × weight
    - **Weight Display**: Shows weight in product name like "Tomatoes (1.5kg)"
    - **Enter Key Support**: Press Enter in any field to quickly submit the form
 
-5. **Edit Per-KG Items**: Click the scale icon on existing per-kg items to modify
+6. **Edit Per-KG Items**: Click the scale icon on existing per-kg items to modify
    - **Edit All Fields**: Change product name, price per kg, and weight
    - **Real-time Updates**: See total price update as you change values
    - **Quick Entry**: Use Enter key to save changes instantly
 
 ### Managing Discounts
-6. **Toggle Discounts**: Use the green tag button to apply/remove discounts
+7. **Toggle Discounts**: Use the green tag button to apply/remove discounts
    - **Automatic Application**: Discounts apply when quantity matches requirements
    - **Visual Indicators**: Green pricing shows active discounts
    - **Smart Grouping**: Discounted items stay together in groups
 
 ### Hold Items
-7. **Hold/Resume Items**: Use the pause button to hold items temporarily
+8. **Hold/Resume Items**: Use the pause button to hold items temporarily
    - **Exclude from Total**: Held items are excluded from the total calculation
    - **Exclude from Splitting**: Held items won't be included when splitting lists into groups
    - **Visual Indicators**: Held items show with gray background and "(on hold)" label
    - **Easy Toggle**: Click the play button to resume held items
 
 ### Smart Grouping
-8. **Enable Split Mode**: Automatically group items by target spending amounts
+9. **Enable Split Mode**: Automatically group items by target spending amounts
    - **Whole Unit Grouping**: Multi-purchase discount and Per-KG items are included as whole units in groups (not split)
-9. **Track Totals**: Monitor your spending with real-time calculations including discount savings
+10. **Track Totals**: Monitor your spending with real-time calculations including discount savings
 
 ## 🔧 Configuration
 
@@ -226,6 +239,7 @@ Access the Settings menu (gear icon) on the main page to configure:
 
 #### Data Management
 - **Clear Autocomplete**: Remove all saved item name suggestions
+- **Clear AI History**: Remove all saved AI conversations and responses
 - **Show App Info**: View the feature showcase splash screen
 
 ### API Setup

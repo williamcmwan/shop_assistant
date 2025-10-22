@@ -1,5 +1,5 @@
 import { ExtractionConfig } from './config';
-import { LoggingService, APICallLog } from './logging-service';
+import { LoggingService, APICallLog, AskAILog } from './logging-service';
 
 export interface GeminiExtractionResult {
   success: boolean;
@@ -296,6 +296,123 @@ Example: {"productName":"Baby Carrot 200g","price":1.79,"confidence":0.9,"discou
         confidence: 0,
         error: errorMessage,
         rawResponse: null
+      };
+    }
+  }
+
+  async askAI(prompt: string, recentItems: Array<{name: string; price: number; quantity: number}>, currencySymbol: string = '€'): Promise<{ success: boolean; response: string; error?: string }> {
+    const startTime = Date.now();
+    const timestamp = new Date().toISOString();
+
+    try {
+      console.log('🤖 Processing AI query...');
+      console.log('📝 Prompt:', prompt);
+      console.log('🛒 Recent items:', recentItems.length);
+
+      if (!this.config.geminiApiKey) {
+        throw new Error('Gemini API key not configured');
+      }
+
+      // Build context with recent items including prices
+      const itemsContext = recentItems.length > 0 
+        ? `\n\nUser's recent shopping items with prices:\n${recentItems.map((item, i) => `${i + 1}. ${item.name} - ${currencySymbol}${item.price.toFixed(2)} (qty: ${item.quantity})`).join('\n')}`
+        : '\n\nNote: User has no recent shopping items.';
+
+      const fullPrompt = `You are a helpful assistant. Answer the user's question based on their recent shopping items.
+
+${prompt}${itemsContext}
+
+Answer only what the user specifically asks for. Do not suggest recipes or meals unless the user explicitly requests them. Focus on the user's actual question and provide relevant information based on their shopping items.
+
+Please provide a helpful, friendly, and practical response. Format your response with:
+- Use clear paragraphs separated by blank lines
+- Use numbered lists (1. 2. 3.) for step-by-step instructions when appropriate
+- Use bullet points (- or •) for tips or lists when appropriate
+- Use ** for section headings
+- Keep it concise and easy to read
+- Be specific and actionable`;
+
+      const requestBody = {
+        contents: [{
+          parts: [{
+            text: fullPrompt
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 1024,
+        }
+      };
+
+      const url = `${this.baseUrl}/${this.config.geminiModel}:generateContent?key=${this.config.geminiApiKey}`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Gemini API error: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!responseText) {
+        throw new Error('No response text from Gemini API');
+      }
+
+      const elapsedTime = (Date.now() - startTime) / 1000;
+
+      // Extract token counts from Gemini response
+      const inputTokens = result.usageMetadata?.promptTokenCount || 0;
+      const outputTokens = result.usageMetadata?.candidatesTokenCount || 0;
+
+      // Log successful Ask AI call
+      const logData: AskAILog = {
+        timestamp,
+        apiModel: this.config.geminiModel,
+        elapsedTime,
+        inputTokens,
+        outputTokens,
+        success: true
+      };
+      this.loggingService.logAskAICall(logData);
+
+      console.log('✅ AI response generated successfully');
+
+      return {
+        success: true,
+        response: responseText.trim()
+      };
+
+    } catch (error) {
+      const elapsedTime = (Date.now() - startTime) / 1000;
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+      // Log failed Ask AI call
+      const logData: AskAILog = {
+        timestamp,
+        apiModel: this.config.geminiModel,
+        elapsedTime,
+        inputTokens: 0,
+        outputTokens: 0,
+        success: false,
+        error: errorMessage
+      };
+      this.loggingService.logAskAICall(logData);
+
+      console.error('❌ AI query failed:', error);
+      return {
+        success: false,
+        response: '',
+        error: errorMessage
       };
     }
   }

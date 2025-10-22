@@ -80,6 +80,36 @@ export function registerRoutes(app: express.Application) {
     }
   });
 
+  // AI assistant endpoint
+  app.post("/api/ask-ai", async (req: Request, res: Response) => {
+    try {
+      const { prompt, recentItems, currencySymbol } = req.body;
+      
+      if (!prompt || typeof prompt !== 'string') {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Prompt is required" 
+        });
+      }
+
+      const extractionService = new ExtractionService();
+      const result = await extractionService.askAI(prompt, recentItems || [], currencySymbol);
+      
+      if (!result.success) {
+        return res.status(500).json(result);
+      }
+      
+      res.json(result);
+      
+    } catch (error) {
+      console.error("AI query error:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : "Internal server error" 
+      });
+    }
+  });
+
   // Serve static files (CSS, JS, etc.)
   const staticPath = path.resolve(__dirname, "..", "dist", "public");
   app.use(express.static(staticPath));

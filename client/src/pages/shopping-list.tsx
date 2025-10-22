@@ -13,7 +13,7 @@ import { PhotoCapture } from "@/components/photo-capture";
 import { WeightEditDialog } from "@/components/weight-edit-dialog";
 import { ManualPerKgDialog } from "@/components/manual-perkg-dialog";
 
-import { ArrowLeft, Plus, Edit2, Check, X, Camera, Tag, Pause, Play, Trash2, Minus, AtSign, Calculator, Percent, Scale } from "lucide-react";
+import { ArrowLeft, Plus, Edit2, Check, X, Camera, Tag, Pause, Play, Trash2, Minus, AtSign, Calculator, Percent, Scale, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn, canApplyDiscount, toggleDiscount, calculateItemTotal } from "@/lib/utils";
 
@@ -963,9 +963,20 @@ export default function ShoppingListPage() {
               </p>
             </div>
           </div>
-          <div className="text-right">
-            <p className="text-xl font-bold text-blue-600">{currencySymbol}{currentList.total.toFixed(2)}</p>
-            <p className="text-xs text-gray-500">{currentList.items.length} items</p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setLocation("/ask-ai")}
+              className="p-2 hover:bg-blue-50"
+              title="Ask AI"
+            >
+              <Sparkles className="h-5 w-5 text-blue-600" />
+            </Button>
+            <div className="text-right">
+              <p className="text-xl font-bold text-blue-600">{currencySymbol}{currentList.total.toFixed(2)}</p>
+              <p className="text-xs text-gray-500">{currentList.items.length} items</p>
+            </div>
           </div>
         </div>
       </div>

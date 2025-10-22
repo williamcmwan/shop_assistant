@@ -9,6 +9,7 @@ import NotFound from "@/pages/not-found";
 import MainPage from "@/pages/main";
 import CreateListPage from "@/pages/create-list";
 import ShoppingListPage from "@/pages/shopping-list";
+import AskAIPage from "@/pages/ask-ai";
 
 function Router() {
   return (
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/" component={MainPage} />
       <Route path="/create" component={CreateListPage} />
       <Route path="/list/:id" component={ShoppingListPage} />
+      <Route path="/ask-ai" component={AskAIPage} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -26,7 +28,7 @@ function App() {
 
   useEffect(() => {
     // Check if splash screen has been shown for this version
-    const SPLASH_VERSION = 'v2.3'; // Update this when splash content changes
+    const SPLASH_VERSION = 'v2.4'; // Update this when splash content changes
     
     // Clear any old splash screen versions to force fresh display
     Object.keys(localStorage).forEach(key => {

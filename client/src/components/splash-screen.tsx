@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, X, Camera, Tag, Package, PauseCircle, Type, Settings, Palette, Scale } from "lucide-react";
+import { ArrowRight, X, Camera, Tag, Package, PauseCircle, Type, Settings, Palette, Scale, Sparkles } from "lucide-react";
 
 interface SplashScreenProps {
   onClose: () => void;
@@ -15,6 +15,13 @@ interface Feature {
 }
 
 const features: Feature[] = [
+  {
+    title: "Ask AI Assistant",
+    description: "Get personalized recipe suggestions, meal planning, nutritional info, and budget analysis based on your shopping items",
+    icon: "✨",
+    iconComponent: <Sparkles className="w-12 h-12" />,
+    gradient: "from-purple-400 to-blue-600"
+  },
   {
     title: "Product Photo Thumbnails",
     description: "AI-powered product image extraction from captured photos with 50x50px thumbnails in lists",
@@ -141,7 +148,7 @@ export function SplashScreen({ onClose }: SplashScreenProps) {
   };
 
   const handleClose = () => {
-    const SPLASH_VERSION = 'v2.3'; // Keep in sync with App.tsx
+    const SPLASH_VERSION = 'v2.4'; // Keep in sync with App.tsx
     localStorage.setItem(`splashScreenShown_${SPLASH_VERSION}`, 'true');
     setFadeOut(true);
     setTimeout(() => {

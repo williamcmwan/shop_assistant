@@ -106,4 +106,25 @@ export class ExtractionService {
       configured: errors.length === 0
     };
   }
+
+  async askAI(prompt: string, recentItems: Array<{name: string; price: number; quantity: number}>, currencySymbol?: string): Promise<{ success: boolean; response: string; error?: string }> {
+    try {
+      // Initialize services (this will validate config and throw if invalid)
+      this.initializeServices();
+      
+      if (!this.geminiService) {
+        throw new Error('Gemini service not initialized');
+      }
+      
+      return await this.geminiService.askAI(prompt, recentItems, currencySymbol);
+      
+    } catch (error) {
+      console.error('❌ AI query failed:', error);
+      return {
+        success: false,
+        response: '',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
 } 

@@ -18,19 +18,37 @@ export interface APICallLog {
   discount?: string; // Display format like "(3 for €10)" or "(3 for 2)"
 }
 
+/**
+ * Log entry for Ask AI API calls
+ * Logged to: server/logs/askai_calls.csv
+ * Format: datetime, api_model, elapsed_time_seconds, input_tokens, output_tokens, status
+ */
+export interface AskAILog {
+  timestamp: string;
+  apiModel: string;
+  elapsedTime: number;
+  inputTokens: number;
+  outputTokens: number;
+  success: boolean;
+  error?: string;
+}
+
 export class LoggingService {
   private logsDir: string;
   private failedExtractionsDir: string;
   private csvFilePath: string;
+  private askAICSVFilePath: string;
 
   constructor() {
     // Create logs directory in the server directory (non-web-accessible)
     this.logsDir = path.resolve(__dirname, 'logs');
     this.failedExtractionsDir = path.resolve(this.logsDir, 'failed_extractions');
     this.csvFilePath = path.resolve(this.logsDir, 'api_calls.csv');
+    this.askAICSVFilePath = path.resolve(this.logsDir, 'askai_calls.csv');
     
     this.ensureDirectoriesExist();
     this.initializeCSV();
+    this.initializeAskAICSV();
   }
 
   private ensureDirectoriesExist(): void {
@@ -70,6 +88,26 @@ export class LoggingService {
       }
     } catch (error) {
       console.error('❌ Error initializing CSV file:', error);
+    }
+  }
+
+  private initializeAskAICSV(): void {
+    try {
+      if (!fs.existsSync(this.askAICSVFilePath)) {
+        const headers = [
+          'datetime',
+          'api_model',
+          'elapsed_time_seconds',
+          'input_tokens',
+          'output_tokens',
+          'status'
+        ].join(',');
+        
+        fs.writeFileSync(this.askAICSVFilePath, headers + '\n');
+        console.log(`📄 Created Ask AI calls CSV file: ${this.askAICSVFilePath}`);
+      }
+    } catch (error) {
+      console.error('❌ Error initializing Ask AI CSV file:', error);
     }
   }
 
@@ -137,5 +175,27 @@ export class LoggingService {
 
   public getCSVFilePath(): string {
     return this.csvFilePath;
+  }
+
+  public logAskAICall(logData: AskAILog): void {
+    try {
+      const csvLine = [
+        logData.timestamp,
+        logData.apiModel,
+        logData.elapsedTime.toFixed(3),
+        logData.inputTokens,
+        logData.outputTokens,
+        logData.success ? 'success' : 'failed'
+      ].join(',');
+
+      fs.appendFileSync(this.askAICSVFilePath, csvLine + '\n');
+      console.log(`📊 Logged Ask AI call: ${logData.apiModel} - ${logData.success ? 'SUCCESS' : 'FAILED'} - ${logData.elapsedTime.toFixed(3)}s - Tokens: ${logData.inputTokens}/${logData.outputTokens}`);
+    } catch (error) {
+      console.error('❌ Error logging Ask AI call:', error);
+    }
+  }
+
+  public getAskAICSVFilePath(): string {
+    return this.askAICSVFilePath;
   }
 } 

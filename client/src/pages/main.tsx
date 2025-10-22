@@ -5,7 +5,7 @@ import { storageService } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit2, Trash2, ShoppingBag, Settings, Trash, DollarSign, Image, ImageOff, Images } from "lucide-react";
+import { Plus, Edit2, Trash2, ShoppingBag, Settings, Trash, DollarSign, Image, ImageOff, Images, Sparkles, History } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -192,6 +192,15 @@ export default function MainPage() {
     });
   };
 
+  const handleClearAIHistory = () => {
+    localStorage.removeItem('ai_saved_responses');
+    toast({
+      title: "AI history cleared",
+      description: "All saved AI responses have been removed",
+      variant: "default"
+    });
+  };
+
   return (
     <div className="max-w-md mx-auto bg-white min-h-screen">
       <div className="p-4">
@@ -241,43 +250,63 @@ export default function MainPage() {
             </div>
           </div>
           
-          {/* Configuration Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2">
+            {/* AI Assistant Button */}
+            <Link href="/ask-ai">
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                className="p-2 hover:bg-gray-100"
-                title="Settings"
+                className="px-3 py-2 border-2 border-blue-500 hover:bg-gradient-to-r hover:from-purple-50 hover:to-blue-50 rounded-full flex items-center gap-1.5"
+                title="Ask AI Assistant"
               >
-                <Settings className="h-5 w-5 text-gray-600" />
+                <span className="text-sm font-semibold text-blue-600">Ask AI</span>
+                <Sparkles className="h-4 w-4 text-blue-600" />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Configuration</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleClearAutocomplete}>
-                <Trash className="mr-2 h-4 w-4" />
-                Clear Autocomplete
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setShowCurrencyDialog(true)}>
-                <DollarSign className="mr-2 h-4 w-4" />
-                Change Currency ({currencySymbol})
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleToggleProductPhotos}>
-                {extractProductPhotos ? (
-                  <Image className="mr-2 h-4 w-4" />
-                ) : (
-                  <ImageOff className="mr-2 h-4 w-4" />
-                )}
-                {extractProductPhotos ? "Disable" : "Enable"} Product Photos
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setShowClearPhotosDialog(true)}>
-                <Images className="mr-2 h-4 w-4" />
-                Clear All Product Photos
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </Link>
+            
+            {/* Configuration Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="p-2 hover:bg-gray-100"
+                  title="Settings"
+                >
+                  <Settings className="h-5 w-5 text-gray-600" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Configuration</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleClearAutocomplete}>
+                  <Trash className="mr-2 h-4 w-4" />
+                  Clear Autocomplete
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowCurrencyDialog(true)}>
+                  <DollarSign className="mr-2 h-4 w-4" />
+                  Change Currency ({currencySymbol})
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleToggleProductPhotos}>
+                  {extractProductPhotos ? (
+                    <Image className="mr-2 h-4 w-4" />
+                  ) : (
+                    <ImageOff className="mr-2 h-4 w-4" />
+                  )}
+                  {extractProductPhotos ? "Disable" : "Enable"} Product Photos
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowClearPhotosDialog(true)}>
+                  <Images className="mr-2 h-4 w-4" />
+                  Clear All Product Photos
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleClearAIHistory}>
+                  <History className="mr-2 h-4 w-4" />
+                  Clear AI History
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
         {/* Create New List Button */}
