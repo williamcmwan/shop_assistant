@@ -44,12 +44,12 @@ export default function MainPage() {
     // Sort lists by date (latest first)
     const sortedLists = savedLists.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     setLists(sortedLists);
-    
+
     // Load currency symbol from localStorage
     const savedCurrency = localStorage.getItem('currencySymbol') || '€';
     setCurrencySymbol(savedCurrency);
     setNewCurrencySymbol(savedCurrency);
-    
+
     // Load product photo extraction setting
     const savedPhotoSetting = localStorage.getItem('extractProductPhotos');
     setExtractProductPhotos(savedPhotoSetting !== 'false'); // Default to true
@@ -82,7 +82,7 @@ export default function MainPage() {
     // Sort lists by date (latest first)
     const sortedLists = updatedLists.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     setLists(sortedLists);
-    
+
     // Reset to first page if current page would be empty
     const totalPages = Math.ceil(sortedLists.length / LISTS_PER_PAGE);
     if (currentPage > totalPages && totalPages > 0) {
@@ -93,7 +93,7 @@ export default function MainPage() {
   };
 
   const handleShowSplashScreen = () => {
-    const SPLASH_VERSION = 'v2.3'; // Keep in sync with App.tsx
+    const SPLASH_VERSION = 'v2.4'; // Keep in sync with App.tsx
     localStorage.removeItem(`splashScreenShown_${SPLASH_VERSION}`);
     window.location.reload();
   };
@@ -111,7 +111,7 @@ export default function MainPage() {
     localStorage.setItem('currencySymbol', newCurrencySymbol);
     setCurrencySymbol(newCurrencySymbol);
     setShowCurrencyDialog(false);
-    
+
     toast({
       title: "Currency updated",
       description: `Currency symbol changed to ${newCurrencySymbol}`,
@@ -128,11 +128,11 @@ export default function MainPage() {
     const newValue = !extractProductPhotos;
     setExtractProductPhotos(newValue);
     localStorage.setItem('extractProductPhotos', String(newValue));
-    
+
     toast({
       title: newValue ? "Product photos enabled" : "Product photos disabled",
-      description: newValue 
-        ? "Photos will be extracted from captured images" 
+      description: newValue
+        ? "Photos will be extracted from captured images"
         : "Photo extraction skipped for faster processing",
       variant: "default"
     });
@@ -142,7 +142,7 @@ export default function MainPage() {
     // Get all lists from storage
     const allLists = storageService.getAllLists();
     let totalPhotosCleared = 0;
-    
+
     // Remove photo field from all items in all lists
     const updatedLists = allLists.map(list => {
       const updatedItems = list.items.map(item => {
@@ -153,7 +153,7 @@ export default function MainPage() {
         }
         return item;
       });
-      
+
       // Also clear photos from groups if they exist
       const updatedGroups = list.groups?.map(group => ({
         ...group,
@@ -165,26 +165,26 @@ export default function MainPage() {
           return item;
         })
       }));
-      
+
       return {
         ...list,
         items: updatedItems,
         groups: updatedGroups
       };
     });
-    
+
     // Save all updated lists back to storage
     updatedLists.forEach(list => {
       storageService.saveList(list);
     });
-    
+
     // Refresh the lists display
     const refreshedLists = storageService.getAllLists();
     const sortedLists = refreshedLists.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     setLists(sortedLists);
-    
+
     setShowClearPhotosDialog(false);
-    
+
     toast({
       title: "Product photos cleared",
       description: `Removed ${totalPhotosCleared} product thumbnail${totalPhotosCleared !== 1 ? 's' : ''} from storage`,
@@ -235,10 +235,10 @@ export default function MainPage() {
                   strokeWidth={1.5}
                   style={{ display: 'none' }}
                 >
-                  <path d="M3 8h18" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M4 8v8a2 2 0 002 2h12a2 2 0 002-2V8" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M6 12h12" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M6 15h12" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M3 8h18" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M4 8v8a2 2 0 002 2h12a2 2 0 002-2V8" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M6 12h12" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M6 15h12" strokeLinecap="round" strokeLinejoin="round" />
                   <circle cx="7" cy="18" r="1.5" />
                   <circle cx="17" cy="18" r="1.5" />
                 </svg>
@@ -249,7 +249,7 @@ export default function MainPage() {
               <p className="text-sm text-gray-600">Manage your shopping efficiently</p>
             </div>
           </div>
-          
+
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
             {/* AI Assistant Button */}
@@ -264,7 +264,7 @@ export default function MainPage() {
                 <Sparkles className="h-4 w-4 text-blue-600" />
               </Button>
             </Link>
-            
+
             {/* Configuration Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -327,7 +327,7 @@ export default function MainPage() {
               </p>
             )}
           </div>
-          
+
           {lists.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <ShoppingBag className="h-16 w-16 mx-auto mb-3 text-gray-300" />
@@ -340,89 +340,89 @@ export default function MainPage() {
               {lists
                 .slice((currentPage - 1) * LISTS_PER_PAGE, currentPage * LISTS_PER_PAGE)
                 .map((list) => (
-              <Card key={list.id} className="bg-white border border-gray-200 shadow-sm">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-medium text-gray-900">{list.name}</h3>
-                      <div className="flex items-center space-x-4 mt-1">
-                        <p className="text-sm text-gray-600">{new Date(list.date).toLocaleDateString()}</p>
-                        <p className="text-sm font-medium text-primary">{currencySymbol}{list.total.toFixed(2)}</p>
-                        <p className="text-xs text-gray-500">{list.items.length} items</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Link href={`/list/${list.id}`}>
-                        <Button 
-                          variant="ghost"
-                          size="sm"
-                          className="text-primary hover:bg-blue-50 p-2"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="ghost"
-                            size="sm"
-                            className="text-primary hover:bg-blue-50 p-2"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Shopping List</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete "{list.name}"? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDeleteList(list.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  <Card key={list.id} className="bg-white border border-gray-200 shadow-sm">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-medium text-gray-900">{list.name}</h3>
+                          <div className="flex items-center space-x-4 mt-1">
+                            <p className="text-sm text-gray-600">{new Date(list.date).toLocaleDateString()}</p>
+                            <p className="text-sm font-medium text-primary">{currencySymbol}{list.total.toFixed(2)}</p>
+                            <p className="text-xs text-gray-500">{list.items.length} items</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Link href={`/list/${list.id}`}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-primary hover:bg-blue-50 p-2"
                             >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-primary hover:bg-blue-50 p-2"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Shopping List</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{list.name}"? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteList(list.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+
+              {/* Pagination Controls */}
+              {lists.length > LISTS_PER_PAGE && (
+                <div className="flex items-center justify-end pt-4">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-2 text-primary border-primary hover:bg-blue-50 disabled:text-gray-400 disabled:border-gray-300"
+                    >
+                      &lt;
+                    </Button>
+                    <div className="flex items-center px-3 py-2 text-sm font-medium text-primary">
+                      {currentPage}/{Math.ceil(lists.length / LISTS_PER_PAGE)}
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(Math.ceil(lists.length / LISTS_PER_PAGE), prev + 1))}
+                      disabled={currentPage === Math.ceil(lists.length / LISTS_PER_PAGE)}
+                      className="px-3 py-2 text-primary border-primary hover:bg-blue-50 disabled:text-gray-400 disabled:border-gray-300"
+                    >
+                      &gt;
+                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-            
-            {/* Pagination Controls */}
-            {lists.length > LISTS_PER_PAGE && (
-              <div className="flex items-center justify-end pt-4">
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                    className="px-3 py-2 text-primary border-primary hover:bg-blue-50 disabled:text-gray-400 disabled:border-gray-300"
-                  >
-                    &lt;
-                  </Button>
-                  <div className="flex items-center px-3 py-2 text-sm font-medium text-primary">
-                    {currentPage}/{Math.ceil(lists.length / LISTS_PER_PAGE)}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(prev => Math.min(Math.ceil(lists.length / LISTS_PER_PAGE), prev + 1))}
-                    disabled={currentPage === Math.ceil(lists.length / LISTS_PER_PAGE)}
-                    className="px-3 py-2 text-primary border-primary hover:bg-blue-50 disabled:text-gray-400 disabled:border-gray-300"
-                  >
-                    &gt;
-                  </Button>
                 </div>
-              </div>
-            )}
+              )}
             </>
           )}
         </div>
@@ -432,11 +432,11 @@ export default function MainPage() {
       {showCurrencyDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           {/* Backdrop */}
-          <div 
-            className="fixed inset-0 bg-black/50" 
+          <div
+            className="fixed inset-0 bg-black/50"
             onClick={handleCancelCurrency}
           />
-          
+
           {/* Modal Content */}
           <div className="relative bg-white rounded-lg shadow-lg p-6 w-full max-w-md mx-4">
             <div className="mb-4">
@@ -445,7 +445,7 @@ export default function MainPage() {
                 Select a common currency or enter a custom symbol.
               </p>
             </div>
-            
+
             {/* Common Currency Options */}
             <div className="mb-4">
               <label className="block text-sm font-medium mb-3">
@@ -464,7 +464,7 @@ export default function MainPage() {
                 ))}
               </div>
             </div>
-            
+
             {/* Manual Input */}
             <div className="mb-6">
               <label htmlFor="currency" className="block text-sm font-medium mb-2">
@@ -479,7 +479,7 @@ export default function MainPage() {
                 className="w-full"
               />
             </div>
-            
+
             <div className="flex gap-3 justify-end">
               <Button variant="outline" onClick={handleCancelCurrency}>
                 Cancel
@@ -496,32 +496,32 @@ export default function MainPage() {
       {showClearPhotosDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           {/* Backdrop */}
-          <div 
-            className="fixed inset-0 bg-black/50" 
+          <div
+            className="fixed inset-0 bg-black/50"
             onClick={() => setShowClearPhotosDialog(false)}
           />
-          
+
           {/* Modal Content */}
           <div className="relative bg-white rounded-lg shadow-lg p-6 w-full max-w-md mx-4">
             <div className="mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Clear All Product Photos</h2>
               <p className="text-sm text-gray-600 mt-2">
-                This will remove all product thumbnail images from your shopping lists. 
+                This will remove all product thumbnail images from your shopping lists.
                 The items and their details will remain, but photos will be deleted.
               </p>
               <p className="text-sm text-gray-600 mt-2">
                 This action cannot be undone.
               </p>
             </div>
-            
+
             <div className="flex gap-3 justify-end">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setShowClearPhotosDialog(false)}
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={handleConfirmClearPhotos}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
