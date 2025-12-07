@@ -140,7 +140,7 @@ Example: {"productName":"Baby Carrot 200g","price":1.79,"confidence":0.9,"discou
       // Try to parse JSON from the response (handle both objects and arrays)
       // Remove markdown code blocks if present
       let cleanedText = responseText.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-      
+
       console.log('🧹 Cleaned text:', cleanedText);
 
       let parsedData;
@@ -150,21 +150,21 @@ Example: {"productName":"Baby Carrot 200g","price":1.79,"confidence":0.9,"discou
         console.log('✅ Successfully parsed JSON');
       } catch (parseError) {
         console.error('❌ Direct parse failed, trying regex extraction...');
-        
+
         // Fallback: try to extract JSON with regex
         let jsonMatch = cleanedText.match(/\[[\s\S]*\]/);
         if (!jsonMatch) {
           // Try to find object - match from first { to last }
           jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
         }
-        
+
         if (!jsonMatch) {
           console.error('❌ No JSON found in response:', responseText);
           throw new Error('No JSON found in Gemini response');
         }
 
         console.log('🔍 Extracted JSON with regex:', jsonMatch[0]);
-        
+
         try {
           parsedData = JSON.parse(jsonMatch[0]);
         } catch (secondParseError) {
@@ -300,7 +300,7 @@ Example: {"productName":"Baby Carrot 200g","price":1.79,"confidence":0.9,"discou
     }
   }
 
-  async askAI(prompt: string, recentItems: Array<{name: string; price: number; quantity: number}>, currencySymbol: string = '€'): Promise<{ success: boolean; response: string; error?: string }> {
+  async askAI(prompt: string, recentItems: Array<{ name: string; price: number; quantity: number }>, currencySymbol: string = '€', history?: Array<{ role: string; content: string }>): Promise<{ success: boolean; response: string; error?: string }> {
     const startTime = Date.now();
     const timestamp = new Date().toISOString();
 
@@ -308,19 +308,29 @@ Example: {"productName":"Baby Carrot 200g","price":1.79,"confidence":0.9,"discou
       console.log('🤖 Processing AI query...');
       console.log('📝 Prompt:', prompt);
       console.log('🛒 Recent items:', recentItems.length);
+      if (history?.length) {
+        console.log('📚 History turns:', history.length);
+      }
 
       if (!this.config.geminiApiKey) {
         throw new Error('Gemini API key not configured');
       }
 
       // Build context with recent items including prices
-      const itemsContext = recentItems.length > 0 
+      const itemsContext = recentItems.length > 0
         ? `\n\nUser's recent shopping items with prices:\n${recentItems.map((item, i) => `${i + 1}. ${item.name} - ${currencySymbol}${item.price.toFixed(2)} (qty: ${item.quantity})`).join('\n')}`
         : '\n\nNote: User has no recent shopping items.';
 
-      const fullPrompt = `You are a helpful assistant. Answer the user's question based on their recent shopping items.
+      // Format history if present
+      let historyContext = '';
+      if (history && history.length > 0) {
+        historyContext = `\n\nPrevious Conversation:\n${history.map(h => `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.content}`).join('\n')}\n`;
+      }
 
-${prompt}${itemsContext}
+      const fullPrompt = `You are a helpful assistant. Answer the user's question based on their recent shopping items.
+${itemsContext}${historyContext}
+
+User Question: ${prompt}
 
 Answer only what the user specifically asks for. Do not suggest recipes or meals unless the user explicitly requests them. Focus on the user's actual question and provide relevant information based on their shopping items.
 

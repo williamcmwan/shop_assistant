@@ -42,7 +42,7 @@ export default function AskAIPage() {
   const [prompt, setPrompt] = useState("");
   const [response, setResponse] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [recentItems, setRecentItems] = useState<Array<{name: string; price: number; quantity: number}>>([]);
+  const [recentItems, setRecentItems] = useState<Array<{ name: string; price: number; quantity: number }>>([]);
   const [showResponseModal, setShowResponseModal] = useState(false);
   const [daysToInclude, setDaysToInclude] = useState(3);
   const [showHistoryPanel, setShowHistoryPanel] = useState(false);
@@ -61,22 +61,22 @@ export default function AskAIPage() {
     // Get shopping items from the selected number of days
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysToInclude);
-    
+
     const lists = storageService.getAllLists();
-    const recentLists = lists.filter(list => 
+    const recentLists = lists.filter(list =>
       new Date(list.date) >= cutoffDate
     );
-    
-    const items = recentLists.flatMap(list => 
+
+    const items = recentLists.flatMap(list =>
       list.items.map(item => ({
         name: item.name,
         price: item.price,
         quantity: item.quantity
       }))
     );
-    
+
     // Remove duplicates based on name and price combination
-    const uniqueItems = items.filter((item, index, self) => 
+    const uniqueItems = items.filter((item, index, self) =>
       index === self.findIndex(i => i.name === item.name && i.price === item.price)
     );
     setRecentItems(uniqueItems);
@@ -92,7 +92,7 @@ export default function AskAIPage() {
         console.error('Failed to load saved responses:', error);
       }
     }
-    
+
     // Load currency symbol
     const savedCurrency = localStorage.getItem('currencySymbol') || '€';
     setCurrencySymbol(savedCurrency);
@@ -210,7 +210,7 @@ export default function AskAIPage() {
     const updated = savedResponses.filter(r => r.id !== id);
     setSavedResponses(updated);
     localStorage.setItem('ai_saved_responses', JSON.stringify(updated));
-    
+
     if (viewingResponse?.id === id) {
       setViewingResponse(null);
     }
@@ -251,7 +251,7 @@ export default function AskAIPage() {
 
   const handleCopyToClipboard = async (saved: SavedResponse) => {
     const shareText = `Q: ${saved.prompt}\n\nA: ${saved.response}`;
-    
+
     try {
       await navigator.clipboard.writeText(shareText);
       toast({
@@ -268,7 +268,7 @@ export default function AskAIPage() {
       textArea.select();
       document.execCommand('copy');
       document.body.removeChild(textArea);
-      
+
       toast({
         title: "Copied!",
         description: "Response copied to clipboard",
@@ -310,6 +310,16 @@ export default function AskAIPage() {
     setIsFollowUpLoading(true);
 
     try {
+      // Construct history from previous turns
+      const history = [
+        { role: 'user', content: viewingResponse.prompt },
+        { role: 'model', content: viewingResponse.response },
+        ...(viewingResponse.followUps || []).flatMap(f => [
+          { role: 'user', content: f.prompt },
+          { role: 'model', content: f.response }
+        ])
+      ];
+
       const res = await fetch("/api/ask-ai", {
         method: "POST",
         headers: {
@@ -318,7 +328,8 @@ export default function AskAIPage() {
         body: JSON.stringify({
           prompt: followUpPrompt.trim(),
           recentItems,
-          currencySymbol
+          currencySymbol,
+          history
         })
       });
 
@@ -327,7 +338,7 @@ export default function AskAIPage() {
       }
 
       const data = await res.json();
-      
+
       // Add follow-up to the current response
       const updatedResponse: SavedResponse = {
         ...viewingResponse,
@@ -342,7 +353,7 @@ export default function AskAIPage() {
       };
 
       // Update in state and localStorage
-      const updatedResponses = savedResponses.map(r => 
+      const updatedResponses = savedResponses.map(r =>
         r.id === viewingResponse.id ? updatedResponse : r
       );
       setSavedResponses(updatedResponses);
@@ -374,6 +385,16 @@ export default function AskAIPage() {
     setIsFollowUpLoading(true);
 
     try {
+      // Construct history from previous turns
+      const history = [
+        { role: 'user', content: prompt },
+        { role: 'model', content: response },
+        ...currentResponseFollowUps.flatMap(f => [
+          { role: 'user', content: f.prompt },
+          { role: 'model', content: f.response }
+        ])
+      ];
+
       const res = await fetch("/api/ask-ai", {
         method: "POST",
         headers: {
@@ -382,7 +403,8 @@ export default function AskAIPage() {
         body: JSON.stringify({
           prompt: followUpPrompt.trim(),
           recentItems,
-          currencySymbol
+          currencySymbol,
+          history
         })
       });
 
@@ -391,7 +413,7 @@ export default function AskAIPage() {
       }
 
       const data = await res.json();
-      
+
       // Add follow-up to current response
       const newFollowUp = {
         prompt: followUpPrompt.trim(),
@@ -500,11 +522,11 @@ export default function AskAIPage() {
 
       // Regular paragraph - collect consecutive non-empty lines
       const paragraphLines: string[] = [];
-      while (i < lines.length && lines[i].trim() && 
-             !lines[i].trim().startsWith('##') && 
-             !lines[i].trim().startsWith('**') &&
-             !/^\d+\.\s/.test(lines[i].trim()) && 
-             !/^[-*•]\s/.test(lines[i].trim())) {
+      while (i < lines.length && lines[i].trim() &&
+        !lines[i].trim().startsWith('##') &&
+        !lines[i].trim().startsWith('**') &&
+        !/^\d+\.\s/.test(lines[i].trim()) &&
+        !/^[-*•]\s/.test(lines[i].trim())) {
         paragraphLines.push(lines[i].trim());
         i++;
       }
@@ -532,20 +554,20 @@ export default function AskAIPage() {
     let match;
 
     const processedText = text;
-    
+
     while ((match = boldRegex.exec(processedText)) !== null) {
       // Add text before the match
       if (match.index > lastIndex) {
         parts.push(processedText.substring(lastIndex, match.index));
       }
-      
+
       // Add bold text
       parts.push(
         <strong key={`bold-${keyCounter++}`} className="font-semibold text-gray-900">
           {match[1]}
         </strong>
       );
-      
+
       lastIndex = match.index + match[0].length;
     }
 
@@ -584,7 +606,7 @@ export default function AskAIPage() {
             title="View saved responses"
           >
             <svg className="h-5 w-5 text-gray-600" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/>
+              <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z" />
             </svg>
             {savedResponses.length > 0 && (
               <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold">
@@ -761,7 +783,7 @@ export default function AskAIPage() {
               </Button>
             </div>
           </div>
-          
+
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-4 pb-24">
             {/* Original Q&A */}
@@ -805,7 +827,7 @@ export default function AskAIPage() {
               </div>
             )}
           </div>
-          
+
           {/* Follow-up Input - Fixed at bottom */}
           <div className="border-t border-gray-200 p-4 bg-white">
             <div className="flex gap-2">
@@ -841,11 +863,11 @@ export default function AskAIPage() {
       {/* History Panel - Slide in from right */}
       {showHistoryPanel && (
         <div className="fixed inset-0 z-50">
-          <div 
-            className="fixed inset-0 bg-black/40" 
+          <div
+            className="fixed inset-0 bg-black/40"
             onClick={() => setShowHistoryPanel(false)}
           />
-          
+
           <div className="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl flex flex-col animate-slide-in-right">
             {/* Header */}
             <div className="bg-white border-b border-gray-200 p-4 flex items-center">
@@ -859,7 +881,7 @@ export default function AskAIPage() {
               </Button>
               <h2 className="text-lg font-bold text-gray-900">History</h2>
             </div>
-            
+
             {/* List */}
             <div className="flex-1 overflow-y-auto">
               {savedResponses.length === 0 ? (
@@ -871,8 +893,8 @@ export default function AskAIPage() {
               ) : (
                 <div className="divide-y divide-gray-200">
                   {savedResponses.map((saved) => (
-                    <div 
-                      key={saved.id} 
+                    <div
+                      key={saved.id}
                       onClick={() => handleViewSavedResponse(saved)}
                       className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
                     >
@@ -942,7 +964,7 @@ export default function AskAIPage() {
               </Button>
             </div>
           </div>
-          
+
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-4 pb-24">
             {/* Original Q&A */}
@@ -990,7 +1012,7 @@ export default function AskAIPage() {
               </div>
             )}
           </div>
-          
+
           {/* Follow-up Input - Fixed at bottom */}
           <div className="border-t border-gray-200 p-4 bg-white">
             <div className="flex gap-2">
@@ -1026,16 +1048,16 @@ export default function AskAIPage() {
       {/* Share Options Modal */}
       {showShareOptions && shareContent && (
         <div className="fixed inset-0 z-50 flex items-end justify-center">
-          <div 
-            className="fixed inset-0 bg-black/40" 
+          <div
+            className="fixed inset-0 bg-black/40"
             onClick={() => setShowShareOptions(false)}
           />
-          
+
           <div className="relative bg-white rounded-t-2xl shadow-2xl w-full max-w-md mx-auto animate-slide-up">
             <div className="p-4 border-b border-gray-200">
               <h3 className="font-semibold text-gray-900 text-center">Share Response</h3>
             </div>
-            
+
             <div className="p-4 grid grid-cols-2 gap-3">
               <Button
                 onClick={() => handleCopyToClipboard(shareContent)}
@@ -1045,52 +1067,52 @@ export default function AskAIPage() {
                 <Copy className="h-6 w-6 text-gray-600" />
                 <span className="text-sm">Copy</span>
               </Button>
-              
+
               <Button
                 onClick={() => handleShareWhatsApp(shareContent)}
                 variant="outline"
                 className="flex flex-col items-center gap-2 h-auto py-4 hover:bg-green-50 hover:border-green-300"
               >
                 <svg className="h-6 w-6 text-green-600" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/>
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488" />
                 </svg>
                 <span className="text-sm">WhatsApp</span>
               </Button>
-              
+
               <Button
                 onClick={() => handleShareTelegram(shareContent)}
                 variant="outline"
                 className="flex flex-col items-center gap-2 h-auto py-4 hover:bg-blue-50 hover:border-blue-300"
               >
                 <svg className="h-6 w-6 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                  <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
                 </svg>
                 <span className="text-sm">Telegram</span>
               </Button>
-              
+
               <Button
                 onClick={() => handleShareEmail(shareContent)}
                 variant="outline"
                 className="flex flex-col items-center gap-2 h-auto py-4 hover:bg-gray-50"
               >
                 <svg className="h-6 w-6 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                  <polyline points="22,6 12,13 2,6"/>
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                  <polyline points="22,6 12,13 2,6" />
                 </svg>
                 <span className="text-sm">Email</span>
               </Button>
-              
+
               <Button
                 onClick={() => handleShareSMS(shareContent)}
                 variant="outline"
                 className="flex flex-col items-center gap-2 h-auto py-4 hover:bg-gray-50"
               >
                 <svg className="h-6 w-6 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
                 <span className="text-sm">Messages</span>
               </Button>
-              
+
               <Button
                 onClick={() => setShowShareOptions(false)}
                 variant="outline"

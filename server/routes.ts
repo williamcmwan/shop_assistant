@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 
 export function registerRoutes(app: express.Application) {
   const server = createServer(app);
-  
+
   // Health check endpoint
   app.get("/api/health", (req: Request, res: Response) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
@@ -19,24 +19,24 @@ export function registerRoutes(app: express.Application) {
   app.post("/api/extract", async (req: Request, res: Response) => {
     try {
       const { imageData } = req.body;
-      
+
       if (!imageData) {
-        return res.status(400).json({ 
-          success: false, 
-          error: "Image data is required" 
+        return res.status(400).json({
+          success: false,
+          error: "Image data is required"
         });
       }
 
       const extractionService = new ExtractionService();
       const result = await extractionService.extractProductInfo(imageData);
-      
+
       res.json(result);
-      
+
     } catch (error) {
       console.error("Extraction error:", error);
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : "Internal server error" 
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Internal server error"
       });
     }
   });
@@ -45,24 +45,24 @@ export function registerRoutes(app: express.Application) {
   app.post("/api/ocr", async (req: Request, res: Response) => {
     try {
       const { imageData, extractPhoto = true } = req.body;
-      
+
       if (!imageData) {
-        return res.status(400).json({ 
-          success: false, 
-          error: "Image data is required" 
+        return res.status(400).json({
+          success: false,
+          error: "Image data is required"
         });
       }
 
       const extractionService = new ExtractionService();
       const result = await extractionService.extractProductInfo(imageData, extractPhoto);
-      
+
       res.json(result);
-      
+
     } catch (error) {
       console.error("OCR error:", error);
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : "Internal server error" 
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Internal server error"
       });
     }
   });
@@ -74,8 +74,8 @@ export function registerRoutes(app: express.Application) {
       const info = extractionService.getBackendInfo();
       res.json(info);
     } catch (error) {
-      res.status(500).json({ 
-        error: error instanceof Error ? error.message : "Internal server error" 
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Internal server error"
       });
     }
   });
@@ -83,29 +83,29 @@ export function registerRoutes(app: express.Application) {
   // AI assistant endpoint
   app.post("/api/ask-ai", async (req: Request, res: Response) => {
     try {
-      const { prompt, recentItems, currencySymbol } = req.body;
-      
+      const { prompt, recentItems, currencySymbol, history } = req.body;
+
       if (!prompt || typeof prompt !== 'string') {
-        return res.status(400).json({ 
-          success: false, 
-          error: "Prompt is required" 
+        return res.status(400).json({
+          success: false,
+          error: "Prompt is required"
         });
       }
 
       const extractionService = new ExtractionService();
-      const result = await extractionService.askAI(prompt, recentItems || [], currencySymbol);
-      
+      const result = await extractionService.askAI(prompt, recentItems || [], currencySymbol, history);
+
       if (!result.success) {
         return res.status(500).json(result);
       }
-      
+
       res.json(result);
-      
+
     } catch (error) {
       console.error("AI query error:", error);
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : "Internal server error" 
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Internal server error"
       });
     }
   });

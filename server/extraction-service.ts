@@ -37,7 +37,7 @@ export class ExtractionService {
     if (this.initialized) return;
 
     const errors = validateConfig(this.config);
-    
+
     if (errors.length > 0) {
       console.error('❌ Configuration errors:', errors);
       throw new Error(`Configuration validation failed: ${errors.join(', ')}`);
@@ -45,21 +45,21 @@ export class ExtractionService {
 
     this.geminiService = new GeminiService(this.config);
     this.initialized = true;
-    
+
     console.log('✅ Gemini service initialized');
   }
 
   async extractProductInfo(imageData: string, extractPhoto: boolean = true): Promise<ExtractionResult> {
     const startTime = Date.now();
-    
+
     try {
       console.log('🚀 Starting extraction with Gemini');
-      
+
       // Initialize services (this will validate config and throw if invalid)
       this.initializeServices();
-      
+
       return await this.extractWithGemini(imageData, extractPhoto);
-      
+
     } catch (error) {
       console.error('❌ Extraction failed:', error);
       return {
@@ -77,13 +77,13 @@ export class ExtractionService {
 
   private async extractWithGemini(imageData: string, extractPhoto: boolean = true): Promise<ExtractionResult> {
     console.log('🤖 Using Gemini API');
-    
+
     if (!this.geminiService) {
       throw new Error('Gemini service not initialized');
     }
-    
+
     const result = await this.geminiService.extractProductInfo(imageData, extractPhoto);
-    
+
     return {
       success: result.success,
       productName: result.productName,
@@ -107,17 +107,17 @@ export class ExtractionService {
     };
   }
 
-  async askAI(prompt: string, recentItems: Array<{name: string; price: number; quantity: number}>, currencySymbol?: string): Promise<{ success: boolean; response: string; error?: string }> {
+  async askAI(prompt: string, recentItems: Array<{ name: string; price: number; quantity: number }>, currencySymbol?: string, history?: Array<{ role: string; content: string }>): Promise<{ success: boolean; response: string; error?: string }> {
     try {
       // Initialize services (this will validate config and throw if invalid)
       this.initializeServices();
-      
+
       if (!this.geminiService) {
         throw new Error('Gemini service not initialized');
       }
-      
-      return await this.geminiService.askAI(prompt, recentItems, currencySymbol);
-      
+
+      return await this.geminiService.askAI(prompt, recentItems, currencySymbol, history);
+
     } catch (error) {
       console.error('❌ AI query failed:', error);
       return {
