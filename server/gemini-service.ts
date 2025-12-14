@@ -80,9 +80,10 @@ export class GeminiService {
 productName: Clean name + weight (e.g. "Greek Yogurt 450g"). If no text, identify visually.
 price: Current unit price. Use "NOW"/"ONLY" price, NOT "WAS" price. IGNORE "SAVE €X" and "WAS €X". Convert "40c"→0.40. 0 if none.
 isPerKg: true only if "PER KG" without weight/total.
-discount: Check yellow labels/packaging for "X for €Y" or "X for Y".
-  - "2 for €4.50" → {"type":"bulk_price","quantity":2,"value":4.5,"display":"(2 for €4.50)"}
-  - "3 for 2" → {"type":"buy_x_get_y","quantity":3,"value":2,"display":"(3 for 2)"}
+discount: Check yellow labels/packaging for multi-buy offers.
+  - bulk_price: "X for €Y" where Y is a PRICE. Example: "3 for €6" → {"type":"bulk_price","quantity":3,"value":6.0,"display":"(3 for €6.00)"}
+  - buy_x_get_y: "X for Y" where Y < X (pay for fewer). Example: "3 for 2" → {"type":"buy_x_get_y","quantity":3,"value":2,"display":"(3 for 2)"}
+  - IMPORTANT: If value has € or is a price amount, use bulk_price. Only use buy_x_get_y when value < quantity.
   - Extract BOTH unit price AND discount.
 confidence: 0.8-1.0 (text), 0.4-0.6 (visual).
 cropArea: Pick ONE prominent item (not shelf). Ignore labels. Return center % and size %.
@@ -255,11 +256,25 @@ Example: {"productName":"Baby Carrot 200g","price":1.79,"confidence":0.9,"discou
         parsedData.discount.quantity &&
         parsedData.discount.value &&
         (parsedData.discount.type === 'bulk_price' || parsedData.discount.type === 'buy_x_get_y')) {
+        
+        let discountType = parsedData.discount.type;
+        let discountValue = parsedData.discount.value;
+        
+        // Validate and fix discount type based on value
+        // For buy_x_get_y: value must be < quantity (e.g., "3 for 2" means value=2, quantity=3)
+        // For bulk_price: value is a price (e.g., "3 for €6" means value=6.00)
+        if (discountType === 'buy_x_get_y' && discountValue >= parsedData.discount.quantity) {
+          // This is actually a bulk_price, not buy_x_get_y
+          // e.g., "3 for €6" was misclassified as buy_x_get_y with value=6
+          console.log(`⚠️ Correcting discount type: value (${discountValue}) >= quantity (${parsedData.discount.quantity}), switching to bulk_price`);
+          discountType = 'bulk_price';
+        }
+        
         result_response.discount = {
-          type: parsedData.discount.type,
+          type: discountType,
           quantity: parsedData.discount.quantity,
-          value: parsedData.discount.value,
-          display: parsedData.discount.display || `(${parsedData.discount.quantity} for ${parsedData.discount.type === 'bulk_price' ? '€' + parsedData.discount.value.toFixed(2) : parsedData.discount.value})`
+          value: discountValue,
+          display: parsedData.discount.display || `(${parsedData.discount.quantity} for ${discountType === 'bulk_price' ? '€' + discountValue.toFixed(2) : discountValue})`
         };
         console.log('✅ Discount detected by Gemini:', result_response.discount);
       }

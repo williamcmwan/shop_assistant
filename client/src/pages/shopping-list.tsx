@@ -1019,15 +1019,18 @@ export default function ShoppingListPage() {
           </div>
           {/* Price, quantity, and add button */}
           <div className="flex gap-2">
-            <Input
-              type="number"
-              inputMode="decimal"
-              value={newItem.price || ""}
-              onChange={(e) => setNewItem(prev => ({ ...prev, price: Number(e.target.value) }))}
-              placeholder={`${currencySymbol}0.00`}
-              step="0.01"
-              className="flex-1 px-4 py-3 text-base"
-            />
+            <div className="relative flex-1">
+              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-base">{currencySymbol}</span>
+              <Input
+                type="number"
+                inputMode="decimal"
+                value={newItem.price || ""}
+                onChange={(e) => setNewItem(prev => ({ ...prev, price: Number(e.target.value) }))}
+                placeholder="0.00"
+                step="0.01"
+                className="w-full pl-7 pr-2 py-3 text-base"
+              />
+            </div>
             <div className="flex items-center gap-2 shrink-0">
               <span className="text-sm text-gray-600 font-medium">Qty:</span>
               <QuantityInput
@@ -1036,6 +1039,23 @@ export default function ShoppingListPage() {
                 className="w-32"
               />
             </div>
+            {newItem.price > 0 && newItem.quantity > 0 && (
+              <div className="flex items-center px-2 bg-blue-50 rounded-md shrink-0">
+                <span className="text-sm font-medium text-blue-600">
+                  {currencySymbol}{calculateItemTotal({
+                    ...newItem,
+                    id: 'preview',
+                    total: 0,
+                    discountApplied: newItem.discount ? canApplyDiscount({
+                      ...newItem,
+                      id: 'preview',
+                      total: 0,
+                      discountApplied: false
+                    } as ShoppingItem) : false
+                  } as ShoppingItem).toFixed(2)}
+                </span>
+              </div>
+            )}
             <Button
               onClick={handleAddItem}
               disabled={isAddingItem}
